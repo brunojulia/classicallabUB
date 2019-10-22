@@ -15,22 +15,7 @@
 	vsslider: vs_slider.__self__
 	thetasslider: thetas_slider.__self__
 
-
-	nslider: n_slider.__self__
-	vslider: v_slider.__self__
-	thetaslider: theta_slider.__self__
-	alphaslider: alpha_slider.__self__
-
-	nlslider: nl_slider.__self__
-	vlslider: vl_slider.__self__
-	thetalslider: thetal_slider.__self__
-	lslider: l_slider.__self__
-
-	nfslider: nf_slider.__self__
-	vxfslider: vxf_slider.__self__
-	vyfslider: vyf_slider.__self__
-	sigfslider: sigf_slider.__self__
-
+	nrslider: nr_slider.__self__
 
 
 	plotbox: plot_box.__self__
@@ -107,7 +92,9 @@
 			size_hint: (1, 0.5)
 			rows: 3
 			cols: 3
-			Label:
+			Button:
+				text: 'Energy'
+				on_press: root.plotpopup()
 			Label:
 			Label:
 			Label:
@@ -236,8 +223,8 @@
 										max: 360
 										step: 1
 						TabbedPanelItem:
-							text: 'Dispersion'
-							id: disp_tab
+							text: 'Random Lattice'
+							id: rl_tab
 							BoxLayout:
 								orientation: 'vertical'
 								size_hint: (1, 1)
@@ -248,191 +235,14 @@
 										markup: True
 										size_hint: (0.2, 1)
 									Label:
-										text: str(round(n_slider.value))
+										text: str(round(nr_slider.value))
 										size_hint: (0.2, 1)
 									Slider:
-										id: n_slider
-										size_hint: (1, 1)
-										min: 2
-										max: 50
-										step: 1
-								BoxLayout:
-									orientation: 'horizontal'
-									Label:
-										text: 'v'
-										markup: True
-										size_hint: (0.2, 1)
-									Label:
-										text: str(round(v_slider.value,2))
-										size_hint: (0.2, 1)
-									Slider:
-										id: v_slider
-										size_hint: (1, 1)
-										min: 0.1
-										max: 10
-										step: 0.1
-								BoxLayout:
-									orientation: 'horizontal'
-									Label:
-										text: u'\u03B8'
-										markup: True
-										size_hint: (0.2, 1)
-									Label:
-										text: str(round(theta_slider.value,2))
-										size_hint: (0.2, 1)
-									Slider:
-										id: theta_slider
-										size_hint: (1, 1)
-										min: 0
-										max: 360
-										step: 1
-								BoxLayout:
-									orientation: 'horizontal'
-									Label:
-										text: 'Spread'
-										markup: True
-										size_hint: (0.2, 1)
-									Label:
-										text: str(round(alpha_slider.value,2))
-										size_hint: (0.2, 1)
-									Slider:
-										id: alpha_slider
+										id: nr_slider
 										size_hint: (1, 1)
 										min: 1
-										max: 90
+										max: 25
 										step: 1
-						TabbedPanelItem:
-							text: 'Line'
-							id: line_tab
-							BoxLayout:
-								orientation: 'vertical'
-								size_hint: (1, 1)
-								BoxLayout:
-									orientation: 'horizontal'
-									Label:
-										text: 'N'
-										markup: True
-										size_hint: (0.2, 1)
-									Label:
-										text: str(round(nl_slider.value))
-										size_hint: (0.2, 1)
-									Slider:
-										id: nl_slider
-										size_hint: (1, 1)
-										min: 2
-										max: 50
-										step: 1
-								BoxLayout:
-									orientation: 'horizontal'
-									Label:
-										text: 'v'
-										markup: True
-										size_hint: (0.2, 1)
-									Label:
-										text: str(round(vl_slider.value,2))
-										size_hint: (0.2, 1)
-									Slider:
-										id: vl_slider
-										size_hint: (1, 1)
-										min: 0.1
-										max: 10
-										step: 0.1
-								BoxLayout:
-									orientation: 'horizontal'
-									Label:
-										text: u'\u03B8'
-										markup: True
-										size_hint: (0.2, 1)
-									Label:
-										text: str(round(thetal_slider.value,2))
-										size_hint: (0.2, 1)
-									Slider:
-										id: thetal_slider
-										size_hint: (1, 1)
-										min: 0
-										max: 360
-										step: 1
-								BoxLayout:
-									orientation: 'horizontal'
-									Label:
-										text: 'L'
-										markup: True
-										size_hint: (0.2, 1)
-									Label:
-										text: str(round(l_slider.value,2))
-										size_hint: (0.2, 1)
-									Slider:
-										id: l_slider
-										size_hint: (1, 1)
-										min: 10
-										max: 200
-										step: 1
-						TabbedPanelItem:
-							text: 'Free Part.'
-							id: fp_tab
-							BoxLayout:
-								orientation: 'vertical'
-								size_hint: (1, 1)
-								BoxLayout:
-									orientation: 'horizontal'
-									Label:
-										text: 'N'
-										markup: True
-										size_hint: (0.2, 1)
-									Label:
-										text: str(round(nf_slider.value))
-										size_hint: (0.2, 1)
-									Slider:
-										id: nf_slider
-										size_hint: (1, 1)
-										min: 1
-										max: 50
-										step: 1
-								BoxLayout:
-									orientation: 'horizontal'
-									Label:
-										text: 'v[sub]x0[/sub]'
-										markup: True
-										size_hint: (0.2, 1)
-									Label:
-										text: str(round(vxf_slider.value,2))
-										size_hint: (0.2, 1)
-									Slider:
-										id: vxf_slider
-										size_hint: (1, 1)
-										min: -10
-										max: 10
-										step: 0.1
-								BoxLayout:
-									orientation: 'horizontal'
-									Label:
-										text: 'v[sub]y0[/sub]'
-										markup: True
-										size_hint: (0.2, 1)
-									Label:
-										text: str(round(vyf_slider.value,2))
-										size_hint: (0.2, 1)
-									Slider:
-										id: vyf_slider
-										size_hint: (1, 1)
-										min: -10
-										max: 10
-										step: 0.1
-								BoxLayout:
-									orientation: 'horizontal'
-									Label:
-										text: u'\u03C3'
-										markup: True
-										size_hint: (0.2, 1)
-									Label:
-										text: str(round(sigf_slider.value,2))
-										size_hint: (0.2, 1)
-									Slider:
-										id: sigf_slider
-										size_hint: (1, 1)
-										min: 1
-										max: 20
-										step: 0.1
 
 
 <savewindow>:
@@ -482,3 +292,6 @@
 			Button:
 				text: 'Cancel'
 				on_press: root.cancel()
+
+<plotwindow>:
+	auto_dismiss: True
