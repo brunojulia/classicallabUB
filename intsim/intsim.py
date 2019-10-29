@@ -56,13 +56,17 @@ class main(BoxLayout):
         self.previewtimer = Clock.schedule_interval(self.preview,0.04)
         self.previewlist = []
         self.progress = 0.
-        self.R = 3.
+        
+        self.V0 = 0.01 #eV
+        self.R = 3.405 #A
+        self.L = 200. #A
+        self.M = 0.04 #kg/mol
                   
     def update_pos(self,touch):
         w = self.plotbox.size[0]
         h = self.plotbox.size[1]
         b = min(w,h)
-        scale = b/200.
+        scale = b/self.L
         x = (touch.pos[0] - b/2.)/scale
         y = (touch.pos[1] - b/2.)/scale
 
@@ -74,7 +78,7 @@ class main(BoxLayout):
         w = self.plotbox.size[0]
         h = self.plotbox.size[1]
         b = min(w,h)
-        scale = b/200.
+        scale = b/self.L
         x = (touch.pos[0] - b/2.)/scale
         y = (touch.pos[1] - b/2.)/scale
         xdif = x-self.x0slider.value
@@ -108,19 +112,19 @@ class main(BoxLayout):
         if(self.partmenu.current_tab.text == 'Single'):
             vx = self.vsslider.value * np.cos(self.thetasslider.value*(np.pi/180.))
             vy = self.vsslider.value * np.sin(self.thetasslider.value*(np.pi/180.))
-            self.particles = np.append(self.particles,particle(self.massslider.value,self.charge,np.array([self.x0slider.value,self.y0slider.value]),np.array([vx,vy]),2))
+            self.particles = np.append(self.particles,particle(self.massslider.value,self.charge,np.array([self.x0slider.value,self.y0slider.value])/self.R,np.array([vx,vy])*self.R,2))
             
             self.previewlist.append('Single')
             self.previewlist.append([self.x0slider.value,self.y0slider.value,vx,vy])
         elif(self.partmenu.current_tab.text == 'Random Lattice'):
             n = int(self.nrslider.value)
             x,y = np.linspace(-75,75,n),np.linspace(-75,75,n)
-            vmax = 10.
+            vmax = 0.5
             for i in range(0,n):
                 for j in range(0,n):
                     vx,vy = (np.random.ranf()-0.5)*vmax,(np.random.ranf()-0.5)*vmax
                 
-                    self.particles = np.append(self.particles,particle(self.massslider.value,self.charge,np.array([x[i],y[j]]),np.array([vx,vy]),2))
+                    self.particles = np.append(self.particles,particle(self.massslider.value,self.charge,np.array([x[i],y[j]])/self.R,np.array([vx,vy]),2))
                 
                     self.previewlist.append('Single')
                     self.previewlist.append([x[i],y[j],vx,vy])
@@ -157,8 +161,8 @@ class main(BoxLayout):
         print('---Computation Start---')
 
         start = time.time()
-        self.s = PhySystem(self.particles,[0.01,self.R])
-        self.s.solve(self.T,self.dt)
+        self.s = PhySystem(self.particles,[self.V0,self.R,self.L/self.R])
+        self.s.solveverlet(self.T,self.dt)
         print('---Computation End---')
         print('Exec time = ',time.time() - start)
         self.ready = True
@@ -166,7 +170,6 @@ class main(BoxLayout):
         self.pcbutton.background_down = 'Icons/playb.png'
         self.statuslabel.text = 'Ready'
         self.s.KE()
-        self.s.PE()
         
         np.savetxt('Kenergy.dat',self.s.K,fmt='%10.5f')
         np.savetxt('Uenergy.dat',self.s.U,fmt='%10.5f')
@@ -250,12 +253,13 @@ class main(BoxLayout):
         
     def plotpopup(self):
         self.eplot = plt.figure()
-        t = np.arange(0.,self.T+self.dt,self.dt)
+        t = np.arange(self.dt,self.T+self.dt,self.dt)
         
         
         plt.plot(t,self.s.K,'r-',label = 'Kinetic Energy')
         plt.plot(t,self.s.U,'b-',label = 'Potential Energy')
         plt.plot(t,self.s.K+self.s.U,'g-',label = 'Total Energy')
+#        plt.plot(t,self.s.Kmean,'g-',label = 'Mean Kinetic Energy')
         plt.legend()
         plt.xlabel('t')
         
@@ -308,8 +312,7 @@ class main(BoxLayout):
                     w = self.plotbox.size[0]
                     h = self.plotbox.size[1]
                     b = min(w,h)
-                    scalew = b/200.
-                    scaleh = b/200.
+                    scale = b/self.L
                     self.plotbox.canvas.clear()
                     
                     vx = self.vsslider.value * np.cos(self.thetasslider.value*(np.pi/180.))
@@ -317,8 +320,8 @@ class main(BoxLayout):
                     
                     with self.plotbox.canvas:
                         Color(1.0,0.5,0.0)
-                        Ellipse(pos=(self.x0slider.value*scalew+w/2.-self.R*scalew/2.,self.y0slider.value*scaleh+h/2.-self.R*scalew/2.),size=(self.R*scalew,self.R*scaleh))
-                        Line(points=[self.x0slider.value*scalew+w/2.,self.y0slider.value*scaleh+h/2.,vx*scalew+w/2.+self.x0slider.value*scalew,vy*scalew+w/2.+self.y0slider.value*scalew])
+                        Ellipse(pos=(self.x0slider.value*scale+w/2.-self.R*scale/2.,self.y0slider.value*scale+h/2.-self.R*scale/2.),size=(self.R*scale,self.R*scale))
+                        Line(points=[self.x0slider.value*scale+w/2.,self.y0slider.value*scale+h/2.,vx*scale+w/2.+self.x0slider.value*scale,vy*scale+w/2.+self.y0slider.value*scale])
                 else:
                     self.plotbox.canvas.clear()
                     
@@ -338,26 +341,24 @@ class main(BoxLayout):
                         w = self.plotbox.size[0]
                         h = self.plotbox.size[1]
                         b = min(w,h)
-                        scalew = b/200.
-                        scaleh = b/200.
+                        scale = b/self.L
                         
                         Color(0.0,0.0,1.0)
-                        Ellipse(pos=(x0*scalew+w/2.-self.R*scalew/2.,y0*scaleh+h/2.-self.R*scalew/2.),size=(self.R*scalew,self.R*scaleh))
-                        Line(points=[x0*scalew+w/2.,y0*scaleh+h/2.,vx0*scalew+w/2.+x0*scalew,vy0*scalew+w/2.+y0*scalew])
+                        Ellipse(pos=(x0*scale+w/2.-self.R*scale/2.,y0*scale+h/2.-self.R*scale/2.),size=(self.R*scale,self.R*scale))
+                        Line(points=[x0*scale+w/2.,y0*scale+h/2.,vx0*scale+w/2.+x0*scale,vy0*scale+w/2.+y0*scale])
                
     def animate(self,interval):
         w = self.plotbox.size[0]
         h = self.plotbox.size[1]
         b = min(w,h)
-        scalew = b/200.
-        scaleh = b/200.
+        scale = b/self.L
         self.plotbox.canvas.clear()
         N = self.particles.size
         i = int(self.time/self.dt)
         with self.plotbox.canvas:
             for j in range(0,N): 
                 Color(1.0,0.0,0.0)
-                Ellipse(pos=(self.s.X[i,j]*scalew+w/2.-self.R*scalew/2.,self.s.Y[i,j]*scaleh+h/2.-self.R*scalew/2.),size=(self.R*scalew,self.R*scaleh))
+                Ellipse(pos=(self.s.X[i,j]*scale*self.R+w/2.-self.R*scale/2.,self.s.Y[i,j]*scale*self.R+h/2.-self.R*scale/2.),size=(self.R*scale,self.R*scale))
         
         self.time += interval*self.speed
         if(self.time >= self.T):
