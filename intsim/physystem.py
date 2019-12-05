@@ -1,53 +1,14 @@
 
 import numpy as np
 
-def LJ(x,y,param):
-    V = param[0]
-    sig = param[1]
-    
-    d = np.sqrt(x**2+y**2)
-    mask = np.where(d < 0.000001,1,0)
-    d = d + mask
-    
-    value = 4*V*((sig/d)**12-(sig/d)**6)
-    value = value*(1-mask)
-    return value
-
-def dLJx(x,y,param):
-    V = param[0]
-    sig = param[1]
-    
-    d = x**2+y**2
-    mask = np.where(d < 0.000001,1,0)
-    d = d + mask
-    x = x + mask
-    
-    value = 24*(sig**6)*V*x*((d**3 - 2*(sig**6))/(d**7))
-    value = value*(1-mask)
-    return value
-
-def dLJy(x,y,param):
-    V = param[0]
-    sig = param[1]
-    
-    d = x**2+y**2
-    mask = np.where(d < 0.000001,1,0)
-    d = d + mask
-    y = y + mask
-    
-    value = 24*(sig**6)*V*y*((d**3 - 2*(sig**6))/(d**7))
-    value = value*(1-mask)
-#    print(value)
-    return value
-
 def dLJverlet(x,r2,param):
     V = param[0]
     sig = param[1]
     L = param[2]
-    rc = L/2.
+    rc = 5.
     
     
-    value = (48.*x)/(r2)*(1./(r2**6) - 0.5/(r2**3))
+    value = ((48.*x)/(r2))*(1./(r2**6) - 0.5/(r2**3))
 
     return value
 
@@ -55,13 +16,118 @@ def LJverlet(r2,param):
     V = param[0]
     sig = param[1]
     L = param[2]
-    rc = L/2.
+    rc = 5.
     
     
     
-    value = 4*(1./(r2**6) - 1./(r2**3)) - 4*(1./(rc**6) - 1./(rc**3))
+    value = 4*(1./(r2**6) - 1./(r2**3)) - 4*(1./(rc**12) - 1./(rc**6))
 
     return value
+
+
+#def dLJverlet(x,r2,param):
+#    V = param[0]
+#    sig = param[1]
+#    L = param[2]
+#    rc = 5.
+#    
+#    
+#    value = ((48.*x)/(r2))*(1./(r2**6))
+#
+#    return value
+#
+#def LJverlet(r2,param):
+#    V = param[0]
+#    sig = param[1]
+#    L = param[2]
+#    rc = 5.
+#    
+#    
+#    
+#    value = 4*(1./(r2**6)) - 4*(1./(rc**12))
+#
+#    return value
+    
+def walls(r,param):
+    V = param[0]
+    sig = param[1]
+    L = param[2]
+    
+    a = 1/sig
+    
+    
+    x0 = L/2.
+    y0 = 0.
+    V0 = 10000*V
+    Rx = 0.01*L
+    Ry = 0.6*L
+    
+    x = r[0] - x0*np.sign(r[0])
+    y = r[1] - y0*np.sign(r[1])
+    px = np.sqrt(x**2)
+    py = np.sqrt(y**2)
+    
+    f1 = V0*(1/(1 + np.exp((px-Rx)/a)))*(1/(1 + np.exp((py-Ry)/a)))
+    
+    x0 = 0.
+    y0 = L/2.
+    V0 = 10000*V
+    Rx = 0.6*L
+    Ry = 0.01*L
+    
+    x = r[0] - x0*np.sign(r[0])
+    y = r[1] - y0*np.sign(r[1])
+    px = np.sqrt(x**2)
+    py = np.sqrt(y**2)
+    
+    f2 = V0*(1/(1 + np.exp((px-Rx)/a)))*(1/(1 + np.exp((py-Ry)/a)))
+    
+    value = f1+f2
+    return value
+
+def dwalls(r,param):
+    V = param[0]
+    sig = param[1]
+    L = param[2]
+    
+    a = 1/sig
+        
+    x0 = L/2.
+    y0 = 0.
+    V0 = 10000*V
+    Rx = 0.01*L
+    Ry = 0.6*L
+    
+    x = r[0] - x0*np.sign(r[0])
+    y = r[1] - y0*np.sign(r[1])
+    
+    
+    px = np.sqrt(x**2)
+    py = np.sqrt(y**2)
+    try:
+        f1 = -V0*((np.sign(x)*np.exp((px-Rx)/a))/(a*(np.exp((px-Rx)/a)+1)**2))*(1/(1 + np.exp((py-Ry)/a)))
+        
+        x0 = 0.
+        y0 = L/2.
+        V0 = 10000*V
+        Rx = 0.6*L
+        Ry = 0.01*L
+        
+        x = r[0] - x0*np.sign(r[0])
+        y = r[1] - y0*np.sign(r[1])
+        px = np.sqrt(x**2)
+        py = np.sqrt(y**2)
+        
+        f2 = -V0*((np.sign(x)*np.exp((Rx+px)/a))/(a*(np.exp(Rx/a)+np.exp(px/a))**2))*(1/(1 + np.exp((py-Ry)/a)))
+    except RuntimeWarning:
+        f1 = 0.
+        f2 = 0.
+    except FloatingPointError:
+        f1 = 0.
+        f2 = 0.
+    f = f1 + f2
+    return f
+
 
 
 class particle:
@@ -162,17 +228,17 @@ class PhySystem:
         
         L = self.param[2]
         
-        rc = L/2.
+        rc = 5.
         
         N = self.particles.size
         MX, MXT = np.meshgrid(X,X)
         MY, MYT = np.meshgrid(Y,Y)
-    
+        
         dx = MXT - MX
-        dx = dx - L*np.rint(dx/L)
+        dx = dx
         
         dy = MYT - MY
-        dy = dy - L*np.rint(dy/L)
+        dy = dy
         
         r2 = np.square(dx)+np.square(dy) 
         
@@ -182,9 +248,9 @@ class PhySystem:
         utot = np.array([])        
         f = np.zeros([N,2])
         for j in range(0,N):
-            dUx = np.sum(np.where(np.logical_and(r2[j,:] < (rc**2), r2[j,:] > 10**(-5)), dLJverlet(dx[j,:],r2[j,:],self.param),0.))
-            dUy = np.sum(np.where(np.logical_and(r2[j,:] < (rc**2), r2[j,:] > 10**(-5)), dLJverlet(dy[j,:],r2[j,:],self.param),0.))
-            u =  np.sum(np.where(np.logical_and(r2[j,:] < (rc**2), r2[j,:] > 10**(-5)), LJverlet(r2[j,:],self.param),0.))
+            dUx = np.sum(np.where(np.logical_and(r2[j,:] < (rc**2), r2[j,:] > 10**(-2)), dLJverlet(dx[j,:],r2[j,:],self.param),0.)) - dwalls([X[j],Y[j]],self.param)
+            dUy = np.sum(np.where(np.logical_and(r2[j,:] < (rc**2), r2[j,:] > 10**(-2)), dLJverlet(dy[j,:],r2[j,:],self.param),0.)) - dwalls([Y[j],X[j]],self.param)
+            u =  np.sum(np.where(np.logical_and(r2[j,:] < (rc**2), r2[j,:] > 10**(-2)), LJverlet(r2[j,:],self.param),0.)) + np.where((X[j]**2+Y[j]**2) > (0.8*L)**2,walls([X[j],Y[j]],self.param),0.)
             f[j,:] = np.array([dUx,dUy])
             utot = np.append(utot,u)
         self.U = np.append(self.U,np.sum(utot))
@@ -194,14 +260,12 @@ class PhySystem:
         t = 0.
         self.n = int(T/dt)
         progress = t/T*100
-        
         np.vectorize(lambda i: i.reset())(self.particles)
         
         self.X = np.vectorize(lambda i: i.r[0])(self.particles)
         self.Y = np.vectorize(lambda i: i.r[1])(self.particles)
         self.VX = np.vectorize(lambda i: i.v[0])(self.particles)
         self.VY = np.vectorize(lambda i: i.v[1])(self.particles)
-        
         
         X1 = self.X
         Y1 = self.Y
@@ -226,8 +290,33 @@ class PhySystem:
             X1,Y1 = X2,Y2
             
             progress = t/T*100
-            if(progress%10 == 0.):
-                print(int(progress),'% done')   
+            if(i%1000 == 0):
+                print(int(progress),'% done') 
+        self.KE()
+        self.V = np.sqrt((self.VX**2 + self.VY**2))
+        self.T = (np.sum(self.V**2,axis=1)/(self.particles.size*2 - 2))
+        
+        vs,a = np.meshgrid(np.linspace(0,self.V.max(),100),self.T)
+        a,ts = np.meshgrid(np.linspace(0,self.V.max(),100),self.T)
+        self.MB = (vs/(ts)*np.exp(-vs**2/(2*ts)))
+        
+        
+        self.Vacu = []
+        self.Tacu = []
+        self.MBacu = []
+        self.Vacu.append(self.V[int(self.n/2),:])
+        self.Tacu.append(np.sum(self.V[int(self.n/2),:]**2)/(self.particles.size*2 - 2))
+        
+        vs = np.linspace(0,self.V.max(),100)
+        self.MBacu.append((vs/(self.Tacu[0])*np.exp(-vs**2/(2*self.Tacu[0]))))
+        
+        delta = 1./dt   
+    
+        for i in range(1,int(self.n/(2*delta))):
+            self.Vacu.append(np.hstack((self.Vacu[i-1],self.V[int(self.n/2)+i,:])))
+            self.Tacu.append(np.sum(self.Vacu[i]**2)/(self.Vacu[i].size*2 - 2))
+            self.MBacu.append((vs/(self.Tacu[i])*np.exp(-vs**2/(2*self.Tacu[i]))))
+            
         return
         
     

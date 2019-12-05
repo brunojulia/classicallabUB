@@ -1,6 +1,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 from physystem import *
 from phi import *
 
@@ -33,6 +34,8 @@ class loadwindow(FloatLayout):
     load = ObjectProperty(None)
     cancel = ObjectProperty(None)
 
+    
+    
 
 class main(BoxLayout):
     
@@ -42,11 +45,29 @@ class main(BoxLayout):
     
     plot_texture = ObjectProperty()
     
+    hist = Figure()   
+    histax = hist.add_subplot(111)     
+    histax.set_xlabel('v')
+    histax.set_xlim([0,1])
+    histax.set_ylim([0,25])
+    histcanvas = FigureCanvasKivyAgg(hist)
+    
+    acuhist = Figure()   
+    acuhistax = acuhist.add_subplot(111)     
+    acuhistax.set_xlabel('v')
+    acuhistax.set_xlim([0,1])
+    acuhistax.set_ylim([0,25])
+    acuhistcanvas = FigureCanvasKivyAgg(acuhist)
+        
+    Vacu = np.array([])
+    MBacu = np.zeros(100)
+    acucounter = 0
+
     
     def __init__(self, **kwargs):
         super(main, self).__init__(**kwargs)
         self.time = 0.
-        self.T = 60
+        self.T = 120
         self.dt = 0.01
         self.speedindex = 3
         self.change_speed()
@@ -57,9 +78,12 @@ class main(BoxLayout):
         self.previewlist = []
         self.progress = 0.
         
+        self.histbox.add_widget(self.histcanvas)
+        self.acuhistbox.add_widget(self.acuhistcanvas)
+        
         self.V0 = 0.01 #eV
         self.R = 3.405 #A
-        self.L = 200. #A
+        self.L = 250. #A
         self.M = 0.04 #kg/mol
                   
     def update_pos(self,touch):
@@ -99,12 +123,6 @@ class main(BoxLayout):
         if(np.abs(x) < 100. and np.abs(y) < 100.):
             if(self.partmenu.current_tab.text == 'Single'):
                 self.thetasslider.value = int(round(angle*(180/np.pi),0))
-                
-            if(self.partmenu.current_tab.text == 'Dispersion'):
-                self.thetaslider.value = int(round(angle*(180/np.pi),0))
-                
-            if(self.partmenu.current_tab.text == 'Line'):
-                self.thetalslider.value = int(round(angle*(180/np.pi),0))
 
 
     def add_particle_list(self):
@@ -112,26 +130,47 @@ class main(BoxLayout):
         if(self.partmenu.current_tab.text == 'Single'):
             vx = self.vsslider.value * np.cos(self.thetasslider.value*(np.pi/180.))
             vy = self.vsslider.value * np.sin(self.thetasslider.value*(np.pi/180.))
-            self.particles = np.append(self.particles,particle(self.massslider.value,self.charge,np.array([self.x0slider.value,self.y0slider.value])/self.R,np.array([vx,vy])*self.R,2))
+            self.particles = np.append(self.particles,particle(self.massslider.value,self.charge,np.array([self.x0slider.value,self.y0slider.value])/self.R,np.array([vx,vy]),2))
             
             self.previewlist.append('Single')
             self.previewlist.append([self.x0slider.value,self.y0slider.value,vx,vy])
         elif(self.partmenu.current_tab.text == 'Random Lattice'):
             n = int(self.nrslider.value)
-            x,y = np.linspace(-75,75,n),np.linspace(-75,75,n)
-            vmax = 0.5
+            x,y = np.linspace(-self.L/2*0.8,self.L/2*0.8,n),np.linspace(-self.L/2*0.8,self.L/2*0.8,n)
+            vmax = 10
+            temp = 2.5
+#            vx,vy = (np.random.ranf(n**2)-0.5),(np.random.ranf(n**2)-0.5)
+#            vx,vy = 0.8*np.ones(n**2)*np.meshgrid(np.sign(x),np.sign(x))[0].flatten() , 0.5*np.ones(n**2)*np.meshgrid(np.sign(y),np.sign(y))[0].flatten()
+            
+            temp = 3.
+            theta = np.random.ranf(n**2)*2*np.pi
+            vx,vy = 0.5*np.cos(theta),0.5*np.sin(theta)
+            
+            vcm = np.array([np.sum(vx),np.sum(vy)])/n**2
+            kin = np.sum(vx**2+vy**2)/n**2
+            
+            vx = (vx-vcm[0])*np.sqrt(2*temp/kin)
+            vy = (vy-vcm[1])*np.sqrt(2*temp/kin)
+            k = 0
             for i in range(0,n):
                 for j in range(0,n):
-                    vx,vy = (np.random.ranf()-0.5)*vmax,(np.random.ranf()-0.5)*vmax
-                
-                    self.particles = np.append(self.particles,particle(self.massslider.value,self.charge,np.array([x[i],y[j]])/self.R,np.array([vx,vy]),2))
+                    self.particles = np.append(self.particles,particle(self.massslider.value,self.charge,np.array([x[i],y[j]])/self.R,np.array([vx[k],vy[k]]),2))
                 
                     self.previewlist.append('Single')
-                    self.previewlist.append([x[i],y[j],vx,vy])
+                    self.previewlist.append([x[i],y[j],vx[k]*self.R,vy[k]*self.R])
+                    k += 1
         self.ready = False
         self.pcbutton.background_normal = 'Icons/compute.png'
         self.pcbutton.background_down = 'Icons/computeb.png'
         self.statuslabel.text = 'Not Ready'
+        
+        V = np.sqrt(vx**2+vy**2)
+        self.histax.set_xlabel('v')
+        self.histax.set_xlim([0,V.max()])
+        self.histax.set_ylim([0,1]) 
+            
+        self.histax.hist(V,bins=np.arange(0, V.max() + 1, 1),density=True)
+        self.histcanvas.draw()
         
             
     def reset_particle_list(self):
@@ -169,11 +208,12 @@ class main(BoxLayout):
         self.pcbutton.background_normal = 'Icons/play.png'
         self.pcbutton.background_down = 'Icons/playb.png'
         self.statuslabel.text = 'Ready'
-        self.s.KE()
         
         np.savetxt('Kenergy.dat',self.s.K,fmt='%10.5f')
         np.savetxt('Uenergy.dat',self.s.U,fmt='%10.5f')
         np.savetxt('Tenergy.dat',self.s.K + self.s.U,fmt='%10.5f')
+        np.savetxt('Temps.dat',self.s.T,fmt='%10.5f')
+        
         
         
     def pause(self):
@@ -202,13 +242,8 @@ class main(BoxLayout):
         self.speedbutton.text = str(self.speed)+'x'
     
     def save(self,path,name,comp=False):
-#        TO CLEAN UP
-        if(False):
-            self.particles = []
-            self.init_conds = []
-            self.previewlist = []
         
-        savedata = np.array([self.particles,self.previewlist])
+        savedata = np.array([self.s,self.T,self.dt,self.L,self.previewlist])
         with open(os.path.join(path,name+'.dat'),'wb') as file:
             pickle.dump(savedata,file)
         self.dismiss_popup()
@@ -219,30 +254,22 @@ class main(BoxLayout):
         self._popup.open()
     
     def load(self,path,name,demo=False):
-#        TO CLEAN UP
         self.stop()
         with open(os.path.join(path,name[0]),'rb') as file:
             savedata = pickle.load(file)
         
-        self.particles = savedata[0]
-        self.previewlist = savedata[1]
-        if(False):
-        	pass
-#        if(len(self.particles) > 0):
-#            if(self.particles[0].steps.size>1):
-#                self.ready = True
-#               self.pcbutton.text = "Play"
-#                self.pcbutton.background_normal = 'Icons/play.png'
-#                self.pcbutton.background_down = 'Icons/playb.png'
-#                self.statuslabel.text = 'Ready'
-#                print('Loaded simulation {} with computation'.format(name))
-        else: 
-            self.ready = False
-#           self.pcbutton.text = "Compute"
-            self.pcbutton.background_normal = 'Icons/compute.png'
-            self.pcbutton.background_down = 'Icons/computeb.png'
-            self.statuslabel.text = 'Not Ready'
-            print('Loaded simulation {}'.format(name))
+        self.s = savedata[0]
+        self.T = savedata[1]
+        self.dt = savedata[2]
+        self.L = savedata[3]
+        self.previewlist = savedata[4]
+        
+        
+        self.ready = True
+        self.pcbutton.background_normal = 'Icons/play.png'
+        self.pcbutton.background_down = 'Icons/playb.png'
+        self.statuslabel.text = 'Ready'
+        print('Loaded simulation {} with computation'.format(name))
         if(demo==False):
             self.dismiss_popup()
     
@@ -252,16 +279,16 @@ class main(BoxLayout):
         self._popup.open()
         
     def plotpopup(self):
-        self.eplot = plt.figure()
+        self.eplot = Figure()
         t = np.arange(self.dt,self.T+self.dt,self.dt)
+        ax = self.eplot.add_subplot(111)
         
-        
-        plt.plot(t,self.s.K,'r-',label = 'Kinetic Energy')
-        plt.plot(t,self.s.U,'b-',label = 'Potential Energy')
-        plt.plot(t,self.s.K+self.s.U,'g-',label = 'Total Energy')
+        ax.plot(t,self.s.K,'r-',label = 'Kinetic Energy')
+        ax.plot(t,self.s.U,'b-',label = 'Potential Energy')
+        ax.plot(t,self.s.K+self.s.U,'g-',label = 'Total Energy')
 #        plt.plot(t,self.s.Kmean,'g-',label = 'Mean Kinetic Energy')
-        plt.legend()
-        plt.xlabel('t')
+        ax.legend(loc=1)
+        ax.set_xlabel('t')
         
         self.ecanvas = FigureCanvasKivyAgg(self.eplot)
         content = self.ecanvas
@@ -353,16 +380,76 @@ class main(BoxLayout):
         b = min(w,h)
         scale = b/self.L
         self.plotbox.canvas.clear()
-        N = self.particles.size
+        
+        N = self.s.particles.size
         i = int(self.time/self.dt)
+        delta = 1./self.dt
         with self.plotbox.canvas:
             for j in range(0,N): 
                 Color(1.0,0.0,0.0)
-                Ellipse(pos=(self.s.X[i,j]*scale*self.R+w/2.-self.R*scale/2.,self.s.Y[i,j]*scale*self.R+h/2.-self.R*scale/2.),size=(self.R*scale,self.R*scale))
+                Ellipse(pos=((self.s.X[i,j])*scale*self.R+w/2.-self.R*scale/2.,(self.s.Y[i,j])*scale*self.R+h/2.-self.R*scale/2.),size=(self.R*scale,self.R*scale))
         
         self.time += interval*self.speed
+        self.progressbar.value = (self.time/self.T)*100
+        
+        self.acucounter += 1
+        
+        if(self.plotmenu.current_tab.text == 'Momentum'):
+            if(i%100 == 0 or i == 0 or True):
+                vs = np.linspace(0,self.s.V.max(),100)
+                
+                self.histax.clear()
+                self.histax.set_xlabel('v')
+                self.histax.set_xlim([0,self.s.V.max()])
+                self.histax.set_ylim([0,np.ceil(self.s.MB.max())])
+                
+            
+                self.histax.hist(self.s.V[i,:],bins=np.arange(0, self.s.V.max() + 1, 1),density=True)
+                self.histax.plot(vs,self.s.MB[i,:],'r-')
+                self.histcanvas.draw()
+        
+        
+        if(self.plotmenu.current_tab.text == 'Acu' and self.time>self.T/2.):
+            vs = np.linspace(0,self.s.V.max(),100)
+            
+            
+            self.acuhistax.clear()
+            self.acuhistax.set_xlabel('v')
+            self.acuhistax.set_xlim([0,self.s.V.max()])
+            self.acuhistax.set_ylim([0,np.ceil(self.s.MB.max())])
+            
+        
+            self.acuhistax.hist(self.s.Vacu[int((i-int((self.T/self.dt)/2))/delta)],bins=np.arange(0, self.s.V.max() + 0.5, 0.5),density=True)
+            self.acuhistax.plot(vs,self.s.MBacu[int((i-int((self.T/self.dt)/2))/delta)],'r-')
+            self.acuhistcanvas.draw()
+            
+#        if(self.plotmenu.current_tab.text == 'Acu'):
+#            vs = np.linspace(0,self.s.V.max(),100)
+#            
+#            
+#            self.acuhistax.clear()
+#            self.acuhistax.set_xlabel('v')
+#            self.acuhistax.set_xlim([0,self.s.V.max()])
+#            self.acuhistax.set_ylim([0,np.ceil(self.s.MB.max())])
+#            
+#        
+#            self.acuhistax.hist(self.Vacu,bins=np.arange(0, self.s.V.max() + 0.5, 0.5),density=True)
+#            self.acuhistax.plot(vs,self.MBacu,'r-')
+#            self.acuhistcanvas.draw()
+            
+#        if(self.time>self.T/2. and self.acucounter == int(0.4/self.dt)):
+#            print('hola')
+#            self.Vacu = np.append(self.Vacu,self.s.V[i,:])
+#            Temp = np.sum(self.Vacu**2)/(self.Vacu.size - 2)
+#            self.MBacu = (vs/(Temp)*np.exp(-vs**2/(2*Temp)))    
+#            print(self.Vacu.shape)
+            
+        if(self.acucounter >= int(1./self.dt)):
+            self.acucounter = 0 
+        
         if(self.time >= self.T):
             self.time = 0.
+            self.Vacu = np.array([])
 
     
 

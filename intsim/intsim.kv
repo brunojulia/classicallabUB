@@ -25,7 +25,10 @@
 
 	parttab: part_tab.__self__
 	partmenu: part_menu.__self__
+	plotmenu: plot_menu.__self__
 	progressbar: progress_bar.__self__
+	histbox: hist_box.__self__
+	acuhistbox: acuhist_box.__self__
 
 	BoxLayout:
 		id: plot_box
@@ -88,21 +91,25 @@
 			id: progress_bar
 			max: 100
 			size_hint: (1, 0.01)
-		GridLayout:
+		BoxLayout:
 			size_hint: (1, 0.5)
-			rows: 3
-			cols: 3
-			Button:
-				text: 'Energy'
-				on_press: root.plotpopup()
-			Label:
-			Label:
-			Label:
-			Label:
-			Label:
-			Label:
-			Label:
-			Label:
+			TabbedPanel:
+				id: plot_menu
+				do_default_tab: False
+				background_image: 'Icons/black.png'
+				TabbedPanelItem:
+					text: 'Energy' 
+					Button:
+						text: 'Energy'
+						on_press: root.plotpopup()
+				TabbedPanelItem:
+					text: 'Momentum'
+					BoxLayout:
+						id: hist_box
+				TabbedPanelItem:
+					text: 'Acu'
+					BoxLayout:
+						id: acuhist_box  
 		TabbedPanel:
 			id: menu
 			size_hint: (1, 0.5)
@@ -204,7 +211,7 @@
 									Slider:
 										id: vs_slider
 										size_hint: (1, 1)
-										min: -10
+										min: 0
 										max: 10
 										step: 0.1
 								BoxLayout:
@@ -241,7 +248,7 @@
 										id: nr_slider
 										size_hint: (1, 1)
 										min: 1
-										max: 25
+										max: 10
 										step: 1
 
 
@@ -295,3 +302,6 @@
 
 <plotwindow>:
 	auto_dismiss: True
+
+
+
