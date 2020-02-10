@@ -254,7 +254,6 @@
 
 <savewindow>:
 	text_input: text_input
-	comp_checkbox: comp_checkbox
 	BoxLayout:
 		orientation: 'vertical'
 		FileChooserListView:
@@ -272,16 +271,10 @@
 			height: 60
 			Button:
 				text: 'Save'
-				on_press: root.save(file_chooser.path, text_input.text,comp=comp_checkbox.active)
+				on_press: root.save(file_chooser.path, text_input.text)
 			Button:
 				text: 'Cancel'
 				on_press: root.cancel()
-			BoxLayout:
-				orientation: 'horizontal'
-				Label:
-					text: 'Save particles and computation'
-				CheckBox:
-					id: comp_checkbox
 
 <loadwindow>:
 	BoxLayout:
