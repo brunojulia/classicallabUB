@@ -2,13 +2,18 @@ import numpy as np
 
 
 #Lennard jones potentials, see documentation for the expressions.
+<<<<<<< HEAD
 def dLJverlet(x,r2,param):
+=======
+def dLJverlet(x,r2,R,param):
+>>>>>>> c3eb70cac51697dfc86b411802e59cea59aea130
     """The derivative has the same form for x and y so only one is needed,
     this only changes when calling the interaction on the algotyhm,
     for all isotrope interactions this should still hold."""
     V = param[0]
     sig = param[1]
     L = param[2]
+<<<<<<< HEAD
     rc = 3.
 
 
@@ -26,6 +31,25 @@ def LJverlet(r2,param):
     #The extra term comes from the truncation of the potential energy
     #See section 3.2.2 of reference [2] of the doc
     value = 4*(1./(r2**6) - 1./(r2**3)) - 4*(1./(rc**12) - 1./(rc**6))
+=======
+    rc = R
+
+    #JV: Because we are working on reduced units (from the values of the Argon gas)
+    # we want need to divide our radius/radius of the Argon gas
+    value = ((48.*x)/(r2))*(((((R/sig)**2)*1./r2)**6) - ((((R/sig)**2)*0.5/r2)**3))
+
+    return value
+
+def LJverlet(r2,R,param):
+    V = param[0]
+    sig = param[1]
+    L = param[2]
+    rc = R
+
+    #The extra term comes from the truncation of the potential energy
+    #See section 3.2.2 of reference [2] of the doc
+    value = 4*((R/sig)*1./(r2**6) - (R/sig)*1./(r2**3)) - 4*((R/sig)*1./(rc**12) - (R/sig)*1./(rc**6))
+>>>>>>> c3eb70cac51697dfc86b411802e59cea59aea130
 
     return value
 
@@ -124,9 +148,16 @@ class particle:
     The dimension of the space is not used but it could be useful for some applications.
     r0 and v0 can be numpy.arrays or lists"""
 
+<<<<<<< HEAD
     def __init__(self,m,q,r0,v0,D):
         self.m = m
         self.q = q
+=======
+    def __init__(self,m,q,R,r0,v0,D):
+        self.m = m
+        self.q = q
+        self.R = R
+>>>>>>> c3eb70cac51697dfc86b411802e59cea59aea130
         self.r0 = r0
         self.v0 = v0
         self.r = r0
@@ -149,6 +180,10 @@ class PhySystem:
         #in this case is not necessary since all particles have the same mass
         #but it is useful for other aplications (Gravitational problems, for example)
         self.m = np.vectorize(lambda i: i.m)(particles)
+<<<<<<< HEAD
+=======
+        self.R = np.vectorize(lambda i: i.R)(particles)
+>>>>>>> c3eb70cac51697dfc86b411802e59cea59aea130
 #        self.q = np.vectorize(lambda i: i.q)(particles)
         self.U = np.array([])
 
@@ -160,6 +195,7 @@ class PhySystem:
         index acceses either the x or y coordinate and the second the particle. The function
         returns the coordinates by separate."""
         r2 = np.zeros([2,self.particles.size])
+<<<<<<< HEAD
         r2 = (2*r1 - r0 + np.transpose(self.fv(r1[0,:],r1[1,:])) * (dt**2))
         #The transpose is necessary because I messed up the shapes when I did the fv function.
 
@@ -167,11 +203,70 @@ class PhySystem:
         return r2[0,:],r2[1,:]
 
     def fv(self,X,Y):
+=======
+        r2 = (2*r1 - r0 + np.transpose(self.fv(r1[0,:],r1[1,:],True)) * (dt**2))
+        #The transpose is necessary because I messed up the shapes when I did the fv function.
+
+        #JV: this needs to change in order to include particles with mass diferent than 1 (in reduced units),
+        # in other words, diferent particles than the Argon gas
+
+        return r2[0,:],r2[1,:]
+
+    def vel_verlet(self,t,dt,r0,v0,a0):
+        """JV: vel_verlet(t,dt,r0,r1,v0,v1) performs one step of the velocity verlet algorithm at
+        time t with a step of dt with the previous position r0 and the previous velocity v0, returns
+        the next postion r1 and the next velocity v1"""
+        r1 = r0 + v0*dt + 0.5*a0*dt**2 #JV: We calculate x(t+dt)
+        a1 = (1/self.m)*np.transpose(self.fv(r1[0,:],r1[1,:],True)) #JV: From x(t+dt) we get a(t+dt)
+        v1 = v0 + 0.5*(a0+a1)*dt #JV: From the a(t+dt) and a(t) we get v(t+dt)
+
+        L = self.param[2]
+
+        #JV: Border conditions, elastic collision
+        v1[0,:] = np.where((r1[0,:]**2)+(self.R)**2 > (0.495*L)**2,-v1[0,:],v1[0,:])
+        v1[1,:] = np.where((r1[1,:]**2)+(self.R)**2 > (0.495*L)**2,-v1[1,:],v1[1,:])
+
+        return r1[0,:],r1[1,:],v1[0,:],v1[1,:],a1
+
+    def close_particles_list(self,r2,m):
+        """JV: This functions returns a list (a matrix) where each rows saves m indexs corresponding to the m
+        closest particles. We will use the r2 matrix calculated in fv() function (go there for more information),
+        that contains the distance between our particles"""
+        dist = r2.copy()
+        N = self.particles.size
+        L = self.param[2]
+
+
+        close_list = []
+
+        for i in range(0, N):
+            temp_index = []
+            for j in range(0, m):
+                min_dist = L**3
+                index_min = 0
+
+                for k in range(0, N):
+                    if(dist[i,k] < min_dist and not(dist[i,k] == 0.)):
+                        min_dist = dist[i,k]
+                        index_min = k
+
+                temp_index.append(index_min)
+                dist[i,index_min] = L**3
+
+            close_list.append(temp_index)
+
+        return close_list
+
+
+
+    def fv(self,X,Y,append):
+>>>>>>> c3eb70cac51697dfc86b411802e59cea59aea130
         """fv(X,Y) represents the forces that act on all the particles at a particular time.
         It computes the matrix of forces using the positions given with X and Y which are
         the arrays of size N containing all the positions (coordinates X and Y).
         The resulting matrix, f is of shape (N,2) (it should be (2,N), see the verlet function)."""
 
+<<<<<<< HEAD
         L = self.param[2]
 
         rc = 3.
@@ -182,6 +277,27 @@ class PhySystem:
         MX, MXT = np.meshgrid(X,X)
         MY, MYT = np.meshgrid(Y,Y)
 
+=======
+        """JV: append is a boolean. If it's true, adds the energy to our list, if it isn't, it doesn't.
+         We do that because in some cases we will call the algorithm more times than the actual step number (and
+         we only want to sum the value T/dt times), this is needed in the velocity-Verlet algorithm, that we call the fv()
+         function one more time than needed just to start the loop."""
+
+        L = self.param[2]
+
+        N = self.particles.size
+
+        #For computing all the distances I use a trick with the meshgrid function,
+        #see the documentation on how this works if you dont see it.
+
+        """JV: X is an array that contains each position, mx is an nxn array that each column is the position of one particle (so it's a matrix
+        that has n X rows) and mxt is the same but tranposed (so it's a matrix of n X columns)"""
+        MX, MXT = np.meshgrid(X,X)
+        MY, MYT = np.meshgrid(Y,Y)
+
+        #JV: So dx is a nxn simetric array with 0 in the diagonal, and each position is the corresponding distance between the particles,
+        # so the position [1,2] is the distance between partcle 1 and 2 (x1-x2), and so on
+>>>>>>> c3eb70cac51697dfc86b411802e59cea59aea130
         dx = MXT - MX
         dx = dx
 
@@ -190,6 +306,7 @@ class PhySystem:
 
         r2 = np.square(dx)+np.square(dy)
 
+<<<<<<< HEAD
         dUx = 0.
         dUy = 0.
         #p = 1 #Pel test de col·lisions
@@ -214,6 +331,84 @@ class PhySystem:
             f[j,:] = np.array([dUx,dUy])
             utot = np.append(utot,u)
         self.U = np.append(self.U,np.sum(utot))
+=======
+        #-np.tile(self.R.reshape(N,1),(1,N)),-np.tile(self.R,(N,1))
+#        r2 = r2-(np.tile(self.R.reshape(N,1),(1,N)))-(np.tile(self.R,(N,1)))
+#
+#        np.fill_diagonal(r2,0)
+
+        dUx = 0.
+        dUy = 0.
+        utot = np.array([])
+        f = np.zeros([N,2])
+
+        i = len(self.U)
+
+        if(i%90 == 0): #JV: every certain amount of steps we update the list
+            self.close_list = self.close_particles_list(r2,self.Nlist) #JV: matrix that contains in every row the indexs of the m closest particles
+
+        for j in range(0,N):
+            dUx = 0
+            dUy = 0
+            u = 0
+
+            #JV: we now calculate the force with only the sqrt(N) closest particles
+            for k in range(0,self.Nlist):
+                c = int(self.close_list[j][k])
+
+                #In the force computation we include the LJ and the walls (JV: in the verlet case). I truncate the interaction at self.R units of lenght,
+                #I also avoid distances close to 0 (which only should affect the diagonal in the matrix of distances)
+                #All these conditions are included using the numpy.where function.
+                #If you want to include more forces you only need to add terms to these lines.
+
+                if(self.vel_verlet_on == True):
+                    if((r2[j,c] < max(self.R[j],self.R[c])) and (r2[j,c] > 10**(-2))):
+                        #print("cop",c," ",j," ",r2[j,c]," ",self.R[j])
+                        #print(" ")
+                        #print(r2)
+                        #print(" ")
+                        if(self.R[j] > self.R[0]): #JV: This conditions evaluates if we are on the brownian section, and if so we calculate the force knowing that
+                        # the force that appears in the big particle is the same that the small particles get when colliding with it but opposite in direction (3rd Newton's law)
+                        #This is not very stylish, but we do that because without this we get problems (the distance between the center of the big particle and the small one is
+                        # so large that the Lennard-Jones potencial of the small one does nothing to the big). This should be fixed in the future, understanding correctly the distances.
+                            dUx = dUx - dLJverlet(dx[c,j],r2[c,j],self.R[j],self.param)
+                            dUy = dUy - dLJverlet(dy[c,j],r2[c,j],self.R[j],self.param)
+                        else:
+                            dUx = dUx + dLJverlet(dx[j,c],r2[j,c],self.R[c],self.param)
+                            dUy = dUy + dLJverlet(dy[j,c],r2[j,c],self.R[c],self.param)
+                else:
+                    if((r2[j,c] < max(self.R[j],self.R[c])) and (r2[j,c] > 10**(-2))):
+                        if(self.R[j] > self.R[0]):
+                            dUx = dUx - dLJverlet(dx[c,j],r2[c,j],self.R[j],self.param) - dwalls([X[j],Y[j]],self.param)
+                            dUy = dUy - dLJverlet(dy[c,j],r2[c,j],self.R[j],self.param) - dwalls([X[j],Y[j]],self.param)
+                        else:
+                            dUx = dUx + dLJverlet(dx[j,c],r2[j,c],self.R[c],self.param) - dwalls([X[j],Y[j]],self.param)
+                            dUy = dUy + dLJverlet(dy[j,c],r2[j,c],self.R[c],self.param) - dwalls([X[j],Y[j]],self.param)
+
+                #JV: We add the energy in the corresponding array in both cases, remember that the verlet algorithm will include the energy from the walls
+                # and that will be visible in fluctuations on the energy
+                if(self.vel_verlet_on == True):
+                    if((r2[j,c] < max(self.R[j],self.R[c])) and (r2[j,c] > 10**(-2))):
+                        u = np.append(u, LJverlet(r2[j,c],self.R[c],self.param))
+                    else:
+                        u = np.append(u, 0)
+                else:
+                    if((r2[j,c] < max(self.R[j],self.R[c])) and (r2[j,c] > 10**(-2))):
+                        u = u + LJverlet(r2[j,c],self.R[c],self.param)
+
+                        if((X[j]**2+Y[j]**2) > (0.8*L)**2):
+                            u = u + walls([X[j],Y[j]],self.param)
+
+            #JV: If the argument it's True, we will append the energy to our corresponding aray
+            if(append == True):
+                utot = np.append(utot,u)
+
+            f[j,:] = f[j,:]+np.array([dUx,dUy])
+
+        if(append == True):
+            self.U = np.append(self.U,np.sum(utot))
+#        exit()
+>>>>>>> c3eb70cac51697dfc86b411802e59cea59aea130
         return f
 
     def solveverlet(self,T,dt):
@@ -226,7 +421,15 @@ class PhySystem:
 
         progress = t/T*100
 
+<<<<<<< HEAD
         np.vectorize(lambda i: i.reset())(self.particles)#This line resets the particles to their initial position
+=======
+        np.vectorize(lambda i: i.reset())(self.particles) #This line resets the particles to their initial position
+
+        self.vel_verlet_on = True #JV: If it's true, it will compute with the velocity verlet algorithm, if it's not, it will compute with normal verlet
+
+        self.Nlist = int(2*(self.particles.size**(1/2))) #JV:This variable defines the number of close particles that will be stored in the list (go to close_particles_list() for more info)
+>>>>>>> c3eb70cac51697dfc86b411802e59cea59aea130
 
         #X,Y,VX,VY has the trajectories of the particles with two indexes that
         #access time and particles, respectively
@@ -235,6 +438,7 @@ class PhySystem:
         self.VX = np.vectorize(lambda i: i.v[0])(self.particles)
         self.VY = np.vectorize(lambda i: i.v[1])(self.particles)
 
+<<<<<<< HEAD
 
         #Generation of the precious position (backwards euler step)
         X1 = self.X
@@ -261,6 +465,87 @@ class PhySystem:
             progress = t/T*100
             if(i%1000 == 0):
                 print(int(progress),'% done')
+=======
+        MX, MXT = np.meshgrid(self.X[:],self.X[:])
+        MY, MYT = np.meshgrid(self.Y[:],self.Y[:])
+
+        #JV: So dx is a nxn simetric array with 0 in the diagonal, and each position is the corresponding distance between the particles,
+        # so the position [1,2] is the distance between partcle 1 and 2 (x1-x2), and so on
+        dx = MXT - MX
+        dx = dx
+
+        dy = MYT - MY
+        dy = dy
+
+        r2 = np.square(dx)+np.square(dy)
+
+        self.close_list = self.close_particles_list(r2,self.Nlist) #JV: we first calculate the matrix that contains in every row the indexs of the m closest particles
+
+
+        if(self.vel_verlet_on == True):
+            #JV: We define the variables that we will need in the velocity verlet algorithm
+            print("Computing with the Velocity-Verlet algorithm")
+            X0 = self.X
+            Y0 = self.Y
+            VX0 = self.VX
+            VY0 = self.VY
+
+            X1 = self.X
+            Y1 = self.Y
+            VX1 = self.VX
+            VY1 = self.VY
+
+            a0 = (1/self.m)*np.transpose(self.fv(X0[:],Y0[:],False))
+
+            for i in range(0, self.n):
+                #JV: call velocityverlet to compute the next position
+                X1,Y1,VX1,VY1,a1 = self.vel_verlet(t,dt,np.array([X0,Y0]),np.array([VX0,VY0]),a0)
+
+                t = t + dt
+
+                self.X = np.vstack((self.X,X1))
+                self.Y = np.vstack((self.Y,Y1))
+                self.VX = np.vstack((self.VX, VX1))
+                self.VY = np.vstack((self.VY, VY1))
+                a0 = a1
+
+                #Redefine and repeat
+                X0,Y0 = X1,Y1
+                VX0,VY0 = VX1,VY1
+
+                #Update and show progress through console
+                progress = t/T*100
+                if(i%1000 == 0):
+                    print(int(progress),'% done')
+        else:
+            print("Computing with the Verlet algorithm")
+
+            #Generation of the precious position (backwards euler step)
+            X1 = self.X
+            Y1 = self.Y
+            X0 = X1 - self.VX*dt
+            Y0 = Y1 - self.VY*dt
+
+            for self.i in range(0,self.n):
+                #Call verlet to compute the next position
+                X2,Y2 = self.verlet(t,dt,np.array([X0,Y0]),np.array([X1,Y1]))
+                t = t + dt
+
+                #Add the new positions to X,Y,VX,VY
+                self.X = np.vstack((self.X,X2))
+                self.Y = np.vstack((self.Y,Y2))
+                self.VX = np.vstack((self.VX,(X2-X0)/(2*dt)))
+                self.VY = np.vstack((self.VY,(Y2-Y0)/(2*dt)))
+
+                #Redefine and repeat
+                X0,Y0 = X1,Y1
+                X1,Y1 = X2,Y2
+
+                #Update and show progress through console
+                progress = t/T*100
+                if(self.i%1000 == 0):
+                    print(int(progress),'% done')
+>>>>>>> c3eb70cac51697dfc86b411802e59cea59aea130
 
         #Once the computation has ended, I compute the kinetic energy,
         #the magnitude of the velocity V and the temperature
