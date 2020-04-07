@@ -118,18 +118,30 @@ from kivy.uix.label import Label
 from kivy.uix.button import Button
 from kivy.uix.textinput import TextInput
 from kivy.properties import ObjectProperty
-from kivy.graphics import Rectangle,Color,Ellipse,Line #Used to draw
+from kivy.graphics import Rectangle,Color,Ellipse,Line,InstructionGroup #Used to draw, JV: InstructionGroup to save the drawing of the brownian trace in a group
 from kivy.garden.matplotlib.backend_kivyagg import FigureCanvasKivyAgg #Used to do matplotlib plots
 from kivy.clock import Clock
 from kivy.uix.popup import Popup
 from kivy.core.window import Window #JV: used to change the background color
-
-import time
+#Other imports
+import pickle #For saving
+import os # For saving too
+import time #To check computation time
 
 #This two lines should set the icon of the application to an ub logo
 #but only works rarely
 from kivy.config import Config
 Config.set('kivy','window_icon','ub.png')
+
+#Definition of the save and load windows popups
+class savewindow(FloatLayout):
+    save = ObjectProperty(None)
+    text_input = ObjectProperty(None)
+    cancel = ObjectProperty(None)
+
+class loadwindow(FloatLayout):
+    load = ObjectProperty(None)
+    cancel = ObjectProperty(None)
 
 class main(BoxLayout):
 
@@ -183,7 +195,7 @@ class main(BoxLayout):
         super(main, self).__init__(**kwargs)
         self.time = 0.
         #Here you can modify the time of computation and the step
-        self.T = 50
+        self.T = 120
         self.dt = 0.01
 
         #Initialization of the speed button
@@ -216,6 +228,13 @@ class main(BoxLayout):
         self.R = 3.405 #A
         self.L = 200. #A
         self.M = 0.04 #kg/mol
+
+        #JV: This group will contain the trace of the big particle in the brownian part. We will use it to clear it from the canvas when we want
+        self.obj = InstructionGroup()
+        self.points = []
+
+        #JV: We create a list that contains our submenus, it will help us when we have to modify them. Update this if you add more submenus.
+        self.submenu_list = [self.rlmenu,self.sbsmenu,self.brwmenu]
 
         #JV: We make this so the simulation starts with one particle instead of 0, that could lead to some errors
         self.add_particle_list()
@@ -256,14 +275,16 @@ class main(BoxLayout):
         """JV: Similar to the previous function, this function is evaluated when the submenu buttons
         are clicked, we will want to erase the previous particles that are in the screen and change them
         to the ones that we want for the new submenu"""
-
         if(self.partmenu.current_tab.text == 'Random Lattice' and not(self.submenu == 'Random Lattice')):
+            self.stop()
             self.submenu = 'Random Lattice'
             self.add_particle_list()
         elif(self.partmenu.current_tab.text == 'Subsystems' and not(self.submenu == 'Subsystems')):
+            self.stop()
             self.submenu = 'Subsystems'
             self.add_particle_list()
         elif(self.partmenu.current_tab.text == 'Brownian' and not(self.submenu == 'Brownian')):
+            self.stop()
             self.submenu = 'Brownian'
             self.add_particle_list()
         else:
@@ -432,6 +453,8 @@ class main(BoxLayout):
 
     def computation(self,*args):
         #Computation process
+        print("")
+        print("")
         print('---Computation Start---')
 
         start = time.time()
@@ -446,6 +469,11 @@ class main(BoxLayout):
 
         print('---Computation End---')
         print('Exec time = ',time.time() - start)
+        print("")
+
+        last = len(self.s.U)-1 #JV: This variable stores the index of the last variable in this arrays, so we can access it easier
+        print("Initial energy: ",self.s.K[0]+self.s.U[0],"Final energy: ",self.s.U[last]+self.s.K[last])
+        print("Relative increment of energy: ", (abs((self.s.K[0]+self.s.U[0])-(self.s.U[last]+self.s.K[last]))/(self.s.K[0]+self.s.U[0]))*100,"%")
 
         self.ready = True
         self.pcbutton.background_normal = 'Icons/play.png'
@@ -470,9 +498,19 @@ class main(BoxLayout):
         self.pause()
         self.paused = False
         self.time = 0
+        self.obj.clear()
         self.plotbox.canvas.clear()
-
-
+        #JV: This next block is used to clear and reset the line that follows the big particle in the Brownian section
+        if(self.submenu == 'Brownian'):
+            self.plotbox.canvas.remove(self.obj)
+            self.points = []
+            self.points.append(self.plotbox.size[0]/2)
+            self.points.append(self.plotbox.size[1]/2)
+            self.points.append(self.plotbox.size[0]/2)
+            self.points.append(self.plotbox.size[1]/2)
+            self.obj.add(Color(0.43,0.96,0.16))
+            self.obj.add(Line(points=self.points,width = 0))
+            self.plotbox.canvas.add(self.obj)
 
     def change_speed(self):
         #This simply cicles the sl list with the speed multipliers, self.speed is later
@@ -488,11 +526,10 @@ class main(BoxLayout):
     #Saving and loading processes and popups, the kivy documentation
     #has a good explanation on the usage of the filebrowser widget and the
     #process of creating popups in general.
-
     def save(self,path,name):
         #I put all the relevant data in a numpy array and save it with pickle
         #The order is important for the loading process.
-        savedata = np.array([self.s,self.T,self.dt,self.L,self.previewlist])
+        savedata = np.array([self.s,self.T,self.dt,self.L,self.previewlist,self.submenu,self.n1,self.n2,self.nsmall])
         with open(os.path.join(path,name+'.dat'),'wb') as file:
             pickle.dump(savedata,file)
         self.dismiss_popup()
@@ -512,13 +549,39 @@ class main(BoxLayout):
         self.dt = savedata[2]
         self.L = savedata[3]
         self.previewlist = savedata[4]
+        self.submenu = savedata[5] #JV: To know in which submenu corresponds the simulation
+        self.n1 = savedata[6]
+        self.n2 = savedata[7]
+        self.nsmall = savedata[8]
 
+        #JV: We set all the submenu buttons to the "not-pressed" mode
+        for k in range(0,len(self.submenu_list)-1):
+            self.submenu_list[k].state = "normal"
+
+        #JV: And now we set the state of the corresponding submenu to "pressed". Update this if you add more submenus
+        if(self.submenu == "Random Lattice"):
+            self.submenu_list[0].state = "down"
+        elif(self.submenu == "Subsystems"):
+            self.submenu_list[1].state = "down"
+        elif(self.submenu == "Brownian"):
+            self.submenu_list[2].state = "down"
 
         self.ready = True
         self.pcbutton.background_normal = 'Icons/play.png'
         self.pcbutton.background_down = 'Icons/playb.png'
         self.statuslabel.text = 'Ready'
+        print("")
+        print("")
         print('Loaded simulation {} with computation'.format(name))
+
+#        print("")
+#        print(self.submenu_list[0].state,self.submenu_list[1].state,self.submenu_list[2].state)
+#        print(self.partmenu.current_tab.text)
+#        print("")
+
+        last = len(self.s.U)-1 #JV: This variable stores the index of the last variable in this arrays, so we can access it easier
+        print("Initial energy: ",self.s.K[0]+self.s.U[0],"Final energy: ",self.s.U[last]+self.s.K[last])
+        print("Relative increment of energy: ", (abs((self.s.K[0]+self.s.U[0])-(self.s.U[last]+self.s.K[last]))/(self.s.K[0]+self.s.U[0]))*100,"%")
         if(demo==False):
             self.dismiss_popup()
 
@@ -529,26 +592,26 @@ class main(BoxLayout):
 
 
 
-    def plotpopup(self):
-        """This plotpopu show the energy plots on a popup when the giant 'Energy' button
-        on the UI is pressed, this was originally and experiment and I ran out of time to
-        change it. It should be done like the histograms and embed the FigureCanvasKivyAgg in
-        the UI directly"""
-        self.eplot = Figure()
-        t = np.arange(self.dt,self.T+self.dt,self.dt)
-        ax = self.eplot.add_subplot(111)
-
-        ax.plot(t,self.s.K,'r-',label = 'Kinetic Energy')
-        ax.plot(t,self.s.U,'b-',label = 'Potential Energy')
-        ax.plot(t,self.s.K+self.s.U,'g-',label = 'Total Energy')
-#        plt.plot(t,self.s.Kmean,'g-',label = 'Mean Kinetic Energy')
-        ax.legend(loc=1)
-        ax.set_xlabel('t')
-
-        self.ecanvas = FigureCanvasKivyAgg(self.eplot)
-        content = self.ecanvas
-        self._popup = Popup(title ='Energy conservation',content = content, size_hint=(0.9,0.9))
-        self._popup.open()
+#    def plotpopup(self):
+#        """This plotpopu show the energy plots on a popup when the giant 'Energy' button
+#        on the UI is pressed, this was originally and experiment and I ran out of time to
+#        change it. It should be done like the histograms and embed the FigureCanvasKivyAgg in
+#        the UI directly"""
+#        self.eplot = Figure()
+#        t = np.arange(self.dt,self.T+self.dt,self.dt)
+#        ax = self.eplot.add_subplot(111)
+#
+#        ax.plot(t,self.s.K,'r-',label = 'Kinetic Energy')
+#        ax.plot(t,self.s.U,'b-',label = 'Potential Energy')
+#        ax.plot(t,self.s.K+self.s.U,'g-',label = 'Total Energy')
+##        plt.plot(t,self.s.Kmean,'g-',label = 'Mean Kinetic Energy')
+#        ax.legend(loc=1)
+#        ax.set_xlabel('t')
+#
+#        self.ecanvas = FigureCanvasKivyAgg(self.eplot)
+#        content = self.ecanvas
+#        self._popup = Popup(title ='Energy conservation',content = content, size_hint=(0.9,0.9))
+#        self._popup.open()
 
     def dismiss_popup(self):
         self._popup.dismiss()
@@ -576,7 +639,7 @@ class main(BoxLayout):
                 self.plotbox.canvas.clear()
 
             with self.plotbox.canvas:
-                if(self.partmenu.current_tab.text == 'Random Lattice'):
+                if(self.submenu == 'Random Lattice'):
                     for i in range(0,len(self.previewlist),1):
                         x0 = self.previewlist[i][0]
                         y0 = self.previewlist[i][1]
@@ -592,7 +655,7 @@ class main(BoxLayout):
                         Ellipse(pos=(x0*scale+w/2.-self.R*scale/2.,y0*scale+h/2.-self.R*scale/2.),size=(self.R*scale,self.R*scale))
                         Line(points=[x0*scale+w/2.,y0*scale+h/2.,vx0*scale+w/2.+x0*scale,vy0*scale+w/2.+y0*scale])
 
-                elif(self.partmenu.current_tab.text == 'Subsystems'):
+                elif(self.submenu == 'Subsystems'):
                     for i in range(0,len(self.previewlist),1):
                         if (i < (self.n1)**2):
                             x0 = self.previewlist[i][0]
@@ -624,7 +687,7 @@ class main(BoxLayout):
                             Ellipse(pos=(x0*scale+w/2.-self.R*scale/2.,y0*scale+h/2.-self.R*scale/2.),size=(self.R*scale,self.R*scale))
                             Line(points=[x0*scale+w/2.,y0*scale+h/2.,vx0*scale+w/2.+x0*scale,vy0*scale+w/2.+y0*scale])
 
-                elif(self.partmenu.current_tab.text == 'Brownian'):
+                elif(self.submenu == 'Brownian'):
                     for i in range(0,len(self.previewlist),1):
                         if (i < (self.nsmall)**2):
                             x0 = self.previewlist[i][0]
@@ -671,11 +734,7 @@ class main(BoxLayout):
 
         delta = 5./self.dt
 
-        #JV: Check if the animations has arrived at the end of the performance, if it has, it will stop
-        if(i >= n):
-            self.stop()
-
-        if(self.partmenu.current_tab.text == 'Random Lattice'):
+        if(self.submenu == 'Random Lattice'):
             with self.plotbox.canvas:
                 for j in range(0,N):
                     Color(1.0,0.0,0.0)
@@ -736,7 +795,7 @@ class main(BoxLayout):
 
                 self.acuhistcanvas.draw()
 
-        elif(self.partmenu.current_tab.text == 'Subsystems'):
+        elif(self.submenu == 'Subsystems'):
             with self.plotbox.canvas:
                 for j in range(0,(self.n1)**2+(self.n2)**2):
                     if(j < self.n1**2):
@@ -802,7 +861,7 @@ class main(BoxLayout):
 
                 self.acuhistcanvas.draw()
 
-        elif(self.partmenu.current_tab.text == 'Brownian'):
+        elif(self.submenu == 'Brownian'):
             with self.plotbox.canvas:
                 for j in range(0,(self.nsmall)**2+(self.nbig)**2):
                     if(j < self.nsmall**2):
@@ -811,11 +870,71 @@ class main(BoxLayout):
                     else:
                         Color(0.43,0.96,0.16)
                         Ellipse(pos=((self.s.X[i,j])*scale*self.R+w/2.-self.Rbig*scale/2.,(self.s.Y[i,j])*scale*self.R+h/2.-self.Rbig*scale/2.),size=(self.Rbig*scale,self.Rbig*scale))
+                        self.plotbox.canvas.add(self.obj)
+                        self.points.append((self.s.X[i,j])*scale*self.R+w/2.)
+                        self.points.append((self.s.Y[i,j])*scale*self.R+h/2.)
+                        self.obj.add(Color(0.43,0.96,0.16))
+                        self.obj.add(Line(points=self.points,width = 1.5))
 
             self.time += interval*self.speed #Here is where speed accelerates animation
             self.progressbar.value = (self.time/self.T)*100 #Updates the progress bar.
 
             self.acucounter += 1
+
+            if(self.plotmenu.current_tab.text == 'Energy'):
+                t = np.arange(self.dt,self.T+10+self.dt,self.dt)
+
+                self.enplotax.clear()
+                self.enplotax.set_xlabel('t')
+                self.enplotax.set_ylabel('Energy')
+
+                self.enplotax.set_xlim([0,self.T])
+                self.enplotax.set_ylim([0,(self.s.K[0:n].max()+self.s.U[0:n].max())+np.uint(self.s.K[0:n].max()+self.s.U[0:n].max())/40])
+
+                self.enplotax.plot(t[0:i],self.s.K[0:i],'r-',label = 'Kinetic Energy', linewidth = 2.2)
+                self.enplotax.plot(t[0:i],self.s.U[0:i],'b-',label = 'Potential Energy')
+                self.enplotax.plot(t[0:i],self.s.K[0:i]+self.s.U[0:i],'g-',label = 'Total Energy')
+
+                self.enplotax.legend(loc=7)
+
+                self.enplotcanvas.draw()
+
+            if(self.plotmenu.current_tab.text == 'Momentum'): #Instantaneous momentum histogram
+                vs = np.linspace(0,self.s.V.max()+0.5,100) #JV: The +0.5 is because we want to see the whole last possible bar
+
+                self.histax.clear()
+                self.histax.set_xlabel('v')
+                self.histax.set_ylabel('Number of particles relative')
+                self.histax.set_xlim([0,self.s.V.max()+0.5])
+                self.histax.set_ylim([0,np.ceil(self.s.MB.max())])
+
+                self.histax.hist([self.s.V[i,0:self.nsmall**2],self.s.V[i,self.nsmall**2:self.nsmall**2+self.nbig**2]],bins=np.arange(0, self.s.V.max() + 1, 1),rwidth=0.75,density=True,color=[[0.32,0.86,0.86],[0.43,0.96,0.16]])
+                self.histax.plot(vs,self.s.MB[i,:],'r-')
+                self.histcanvas.draw()
+
+
+            if(self.plotmenu.current_tab.text == 'Acu'): #Accumulated momentum histogram
+                self.acuhistax.clear()
+                if(self.time > 40.):
+                    vs = np.linspace(0,self.s.V.max()+0.5,100)
+
+                    self.acuhistax.set_xlabel('v')
+                    self.acuhistax.set_ylabel('Number of particles relative')
+                    self.acuhistax.set_xlim([0,self.s.V.max()+0.5])
+                    self.acuhistax.set_ylim([0,np.ceil(self.s.MB.max())])
+
+
+                    self.acuhistax.hist(self.s.Vacu[int((i-int((40./self.dt)))/delta)],bins=np.arange(0, self.s.V.max() + 0.2, 0.2),density=True)
+                    self.acuhistax.plot(vs,self.s.MBacu[int((i-int((40./self.dt)))/delta)],'r-')
+
+                self.acuhistcanvas.draw()
+
+
+        #JV: Check if the animations has arrived at the end of the performance, if it has, it will stop
+        if(i >= n):
+            self.stop()
+
+
         """This block of code is for building the accumulated histograms as the animation progresses, this
         is extremely slow and will slowdown the program, I will leave it if you want to take a look at it."""
 

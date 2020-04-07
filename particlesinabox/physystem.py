@@ -1,31 +1,42 @@
 import numpy as np
 
-
-#Lennard jones potentials, see documentation for the expressions.
-def dLJverlet(x,r2,R,param):
+#JV: Truncated Lennard-Jones potentials (WCA), see LJverlet function for more explanation and documentation for the expressions.
+#JV: We include both radius as parameters so we can generalize the function to interaction between diferent radius
+def dLJverlet(x,r2,R1,R2,param):
     """The derivative has the same form for x and y so only one is needed,
     this only changes when calling the interaction on the algotyhm,
     for all isotrope interactions this should still hold."""
     V = param[0]
     sig = param[1]
     L = param[2]
-    rc = R
+    rc = (2**(1/6))*((R1+R2)/(2*sig))
 
     #JV: Because we are working on reduced units (from the values of the Argon gas)
-    # we want need to divide our radius/radius of the Argon gas
-    value = ((48.*x)/(r2))*(((((R/sig)**2)*1./r2)**6) - ((((R/sig)**2)*0.5/r2)**3))
+    # we want need to divide our radius by the radius of the Argon gas
+
+    #JV: See LJverlet() for more explanation on the truncation
+#    if((r2**(1/2))>rc):
+#        value = 0
+#    else:
+    value = ((48.*x)/(r2))*((((((R1+R2)/(2*sig))**2)*1./r2)**6) - (((((R1+R2)/(2*sig))**2)*0.5/r2)**3))
 
     return value
 
-def LJverlet(r2,R,param):
+def LJverlet(r2,R1,R2,param):
     V = param[0]
     sig = param[1]
     L = param[2]
-    rc = R
+    rc = (2**(1/6))*((R1+R2)/(2*sig))
 
-    #The extra term comes from the truncation of the potential energy
-    #See section 3.2.2 of reference [2] of the doc
-    value = 4*((R/sig)*1./(r2**6) - (R/sig)*1./(r2**3)) - 4*((R/sig)*1./(rc**12) - (R/sig)*1./(rc**6))
+    """JV: In doing this, we are actually taking the LJ potential truncated at the minimum potentail eneregy, at a distance
+    r=(2**(1/6))*sigma, and we shift upward by the amount of minimum energy on the energy scale so the energy and the force are
+    0 at or beyond the cutoff distance, so we get a continuous and only repulsive potential. This is actually called a WCA
+    potential (Weeks-Chandler-Andersen potential) and it's actually what we need here, we don't actually need the
+    atractive part of the LJ potential for this simulation."""
+    if((r2**(1/2))>rc):
+        value = 0
+    else:
+        value = 4*((((((R1+R2)/(2*sig))**2)*1./r2)**6) - (((((R1+R2)/(2*sig))**2)*1./r2)**3)) - 4*(((((R1+R2)/(2*sig))*1./rc)**12) - ((((R1+R2)/(2*sig)*1./rc)**6)))
 
     return value
 
@@ -262,7 +273,7 @@ class PhySystem:
 
         i = len(self.U)
 
-        if(i%90 == 0): #JV: every certain amount of steps we update the list
+        if((i*self.dt)%1 == 0): #JV: every certain amount of steps we update the list
             self.close_list = self.close_particles_list(r2,self.Nlist) #JV: matrix that contains in every row the indexs of the m closest particles
 
         for j in range(0,N):
@@ -280,39 +291,24 @@ class PhySystem:
                 #If you want to include more forces you only need to add terms to these lines.
 
                 if(self.vel_verlet_on == True):
-                    if((r2[j,c] < max(self.R[j],self.R[c])) and (r2[j,c] > 10**(-2))):
-                        #print("cop",c," ",j," ",r2[j,c]," ",self.R[j])
-                        #print(" ")
-                        #print(r2)
-                        #print(" ")
-                        if(self.R[j] > self.R[0]): #JV: This conditions evaluates if we are on the brownian section, and if so we calculate the force knowing that
-                        # the force that appears in the big particle is the same that the small particles get when colliding with it but opposite in direction (3rd Newton's law)
-                        #This is not very stylish, but we do that because without this we get problems (the distance between the center of the big particle and the small one is
-                        # so large that the Lennard-Jones potencial of the small one does nothing to the big). This should be fixed in the future, understanding correctly the distances.
-                            dUx = dUx - dLJverlet(dx[c,j],r2[c,j],self.R[j],self.param)
-                            dUy = dUy - dLJverlet(dy[c,j],r2[c,j],self.R[j],self.param)
-                        else:
-                            dUx = dUx + dLJverlet(dx[j,c],r2[j,c],self.R[c],self.param)
-                            dUy = dUy + dLJverlet(dy[j,c],r2[j,c],self.R[c],self.param)
+                    if((r2[j,c] < 1.2*max(self.R[j],self.R[c])) and (r2[j,c] > 10**(-2))):
+                        dUx = dUx + dLJverlet(dx[j,c],r2[j,c],self.R[j],self.R[c],self.param)
+                        dUy = dUy + dLJverlet(dy[j,c],r2[j,c],self.R[j],self.R[c],self.param)
                 else:
-                    if((r2[j,c] < max(self.R[j],self.R[c])) and (r2[j,c] > 10**(-2))):
-                        if(self.R[j] > self.R[0]):
-                            dUx = dUx - dLJverlet(dx[c,j],r2[c,j],self.R[j],self.param) - dwalls([X[j],Y[j]],self.param)
-                            dUy = dUy - dLJverlet(dy[c,j],r2[c,j],self.R[j],self.param) - dwalls([X[j],Y[j]],self.param)
-                        else:
-                            dUx = dUx + dLJverlet(dx[j,c],r2[j,c],self.R[c],self.param) - dwalls([X[j],Y[j]],self.param)
-                            dUy = dUy + dLJverlet(dy[j,c],r2[j,c],self.R[c],self.param) - dwalls([X[j],Y[j]],self.param)
+                    if((r2[j,c] < 1.2*max(self.R[j],self.R[c])) and (r2[j,c] > 10**(-2))):
+                        dUx = dUx + dLJverlet(dx[j,c],r2[j,c],self.R[j],self.R[c],self.param) - dwalls([X[j],Y[j]],self.param)
+                        dUy = dUy + dLJverlet(dy[j,c],r2[j,c],self.R[j],self.R[c],self.param) - dwalls([X[j],Y[j]],self.param)
 
                 #JV: We add the energy in the corresponding array in both cases, remember that the verlet algorithm will include the energy from the walls
                 # and that will be visible in fluctuations on the energy
                 if(self.vel_verlet_on == True):
-                    if((r2[j,c] < max(self.R[j],self.R[c])) and (r2[j,c] > 10**(-2))):
-                        u = np.append(u, LJverlet(r2[j,c],self.R[c],self.param))
+                    if((r2[j,c] < 1.2*max(self.R[j],self.R[c])) and (r2[j,c] > 10**(-2))):
+                        u = np.append(u, LJverlet(r2[j,c],self.R[c],self.R[j],self.param))
                     else:
                         u = np.append(u, 0)
                 else:
                     if((r2[j,c] < max(self.R[j],self.R[c])) and (r2[j,c] > 10**(-2))):
-                        u = u + LJverlet(r2[j,c],self.R[c],self.param)
+                        u = u + LJverlet(r2[j,c],self.R[c],self.R[j],self.param)
 
                         if((X[j]**2+Y[j]**2) > (0.8*L)**2):
                             u = u + walls([X[j],Y[j]],self.param)
@@ -325,7 +321,7 @@ class PhySystem:
 
         if(append == True):
             self.U = np.append(self.U,np.sum(utot))
-#        exit()
+
         return f
 
     def solveverlet(self,T,dt):
@@ -334,6 +330,7 @@ class PhySystem:
         as the temperature of the system both at each instant and acumulated
         every delta (see below)."""
         t = 0.
+        self.dt = dt
         self.n = int(T/dt)
 
         progress = t/T*100
@@ -402,6 +399,7 @@ class PhySystem:
                 progress = t/T*100
                 if(i%1000 == 0):
                     print(int(progress),'% done')
+
         else:
             print("Computing with the Verlet algorithm")
 
