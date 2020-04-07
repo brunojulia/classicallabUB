@@ -24,6 +24,9 @@
 	parttab: part_tab.__self__
 	partmenu: part_menu.__self__
 	plotmenu: plot_menu.__self__
+	rlmenu: rl_tab.__self__
+	sbsmenu: sbs_tab.__self__
+	brwmenu: brw_tab.__self__
 	progressbar: progress_bar.__self__
 	enplotbox: enplot_box.__self__
 	histbox: hist_box.__self__
@@ -201,7 +204,7 @@
 										on_touch_up: root.on_touch_Slider()
 						TabbedPanelItem:
 							text: 'Subsystems'
-							id: sbs_tab:
+							id: sbs_tab
 							on_touch_up: root.on_touch_Slider()
 							BoxLayout:
 								orientation: 'vertical'
@@ -240,7 +243,7 @@
 										on_touch_up: root.on_touch_Slider()
 						TabbedPanelItem:
 							text: 'Brownian'
-							id: sbs_tab:
+							id: brw_tab
 							on_touch_up: root.on_touch_Slider()
 							BoxLayout:
 								orientation: 'vertical'
@@ -277,6 +280,47 @@
 										max: 12
 										step: 2
 										on_touch_up: root.on_touch_Slider()
+<savewindow>:
+	text_input: text_input
+	BoxLayout:
+		orientation: 'vertical'
+		FileChooserListView:
+			id: file_chooser
+			on_selection: text_input.text = self.selection and self.selection[0] or ''
+			rootpath: 'Saves'
+		TextInput:
+			id: text_input
+			size_hint: (1, None)
+			height: 30
+			multiline: False
+		BoxLayout:
+			orientation: 'horizontal'
+			size_hint: (1, None)
+			height: 60
+			Button:
+				text: 'Save'
+				on_press: root.save(file_chooser.path, text_input.text)
+			Button:
+				text: 'Cancel'
+				on_press: root.cancel()
+
+<loadwindow>:
+	BoxLayout:
+		orientation: 'vertical'
+		FileChooserListView:
+			id: file_chooser
+			rootpath: 'Saves'
+		BoxLayout:
+			orientation: 'horizontal'
+			size_hint: (1, None)
+			height: 60
+			Button:
+				text: 'Load'
+				on_press: root.load(file_chooser.path, file_chooser.selection)
+			Button:
+				text: 'Cancel'
+				on_press: root.cancel()
+
 <plotwindow>:
 	auto_dismiss: True
 
