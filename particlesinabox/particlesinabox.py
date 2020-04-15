@@ -195,7 +195,7 @@ class main(BoxLayout):
         super(main, self).__init__(**kwargs)
         self.time = 0.
         #Here you can modify the time of computation and the step
-        self.T = 120
+        self.T = 300
         self.dt = 0.01
 
         #Initialization of the speed button
@@ -209,7 +209,8 @@ class main(BoxLayout):
         self.previewtimer = Clock.schedule_interval(self.preview,0.04)#Always, runs, shows previews. Crida la funció preview cada 0.04 segons
         self.previewlist = []
         self.progress = 0.
-        self.submenu = 'Random Lattice' #JV: We start at the "random lattice" submenu
+        self.our_submenu = 'Random Lattice' #JV: We start at the "Random Lattice" submenu
+        self.our_menu = 'In a box' #JV: We start at "In a box" menu. This two variables will store in which submenu/menu we are
         self.n = 1 #JV: Modify this value if at the start you want to show more than one particle in the simulation (as a default value)
         self.n1 = 1 #JV: Modify this value if at the start you want to show more than one particle in the subsystem 1 in the subsystems submenu (as a default value)
         self.n2 = 1 #JV: Same for the second subsystem
@@ -235,6 +236,11 @@ class main(BoxLayout):
 
         #JV: We create a list that contains our submenus, it will help us when we have to modify them. Update this if you add more submenus.
         self.submenu_list = [self.rlmenu,self.sbsmenu,self.brwmenu]
+        self.submenu_list_str = ["Random Lattice","Subsystems","Brownian"] #JV: And a list with the names of each submenu
+
+        #JV: We do the same for the menus. Update this if you add more menus.
+        self.menu_list = [self.inaboxmenu,self.freemenu]
+        self.menu_list_str = ["In a box","Free!"] #JV: And a list with the names of each menu
 
         #JV: We make this so the simulation starts with one particle instead of 0, that could lead to some errors
         self.add_particle_list()
@@ -255,37 +261,91 @@ class main(BoxLayout):
         if the number chosen particles is changed, if it isn't, we will understand it as an accidental
         click (which often happens), so we don't mess the computation"""
 
-        if(self.partmenu.current_tab.text == 'Random Lattice'):
-            if(self.nrslider.value == self.n):
-                pass
-            else:
-                self.add_particle_list()
-        elif(self.partmenu.current_tab.text == 'Subsystems'):
-            if(self.n1slider.value == self.n1 and self.n2slider.value == self.n2):
-                  pass
-            else:
-                  self.add_particle_list()
-        elif(self.partmenu.current_tab.text == 'Brownian'):
-            if(self.nbigslider.value == self.nbig and self.nsmallslider.value == self.nsmall):
-                pass
-            else:
-                self.add_particle_list()
+        #JV: Conditions for "In a box" menu
+        if(self.menu.current_tab.text == self.menu_list_str[0]):
+            if(self.menu_list[0].current_tab.text == 'Random Lattice'):
+                if(self.nrslider.value == self.n):
+                    pass
+                else:
+                    self.add_particle_list()
+            elif(self.menu_list[0].current_tab.text == 'Subsystems'):
+                if(self.n1slider.value == self.n1 and self.n2slider.value == self.n2):
+                      pass
+                else:
+                      self.add_particle_list()
+            elif(self.menu_list[0].current_tab.text == 'Brownian'):
+                if(self.nbigslider.value == self.nbig and self.nsmallslider.value == self.nsmall):
+                    pass
+                else:
+                    self.add_particle_list()
+        #JV: Conditions for "Free!" menu
+        elif(self.menu.current_tab.text == self.menu_list_str[1]):
+            if(self.menu_list[1].current_tab.text == 'Random Lattice'):
+                if(self.nrslider2.value == self.n):
+                    pass
+                else:
+                    self.add_particle_list()
+            elif(self.menu_list[1].current_tab.text == 'Subsystems'):
+                if(self.n1slider2.value == self.n1 and self.n2slider2.value == self.n2):
+                      pass
+                else:
+                      self.add_particle_list()
+            elif(self.menu_list[1].current_tab.text == 'Brownian'):
+                if(self.nbigslider2.value == self.nbig and self.nsmallslider2.value == self.nsmall):
+                    pass
+                else:
+                    self.add_particle_list()
 
     def on_touch_Submenu(self):
         """JV: Similar to the previous function, this function is evaluated when the submenu buttons
         are clicked, we will want to erase the previous particles that are in the screen and change them
         to the ones that we want for the new submenu"""
-        if(self.partmenu.current_tab.text == 'Random Lattice' and not(self.submenu == 'Random Lattice')):
+
+        #JV: Conditions for "In a box" menu
+        if(self.menu.current_tab.text == self.menu_list_str[0]):
+            if(self.menu_list[0].current_tab.text == 'Random Lattice' and not(self.our_submenu == 'Random Lattice')):
+                self.stop()
+                self.our_submenu = 'Random Lattice'
+                self.add_particle_list()
+            elif(self.menu_list[0].current_tab.text == 'Subsystems' and not(self.our_submenu == 'Subsystems')):
+                self.stop()
+                self.our_submenu = 'Subsystems'
+                self.add_particle_list()
+            elif(self.menu_list[0].current_tab.text == 'Brownian' and not(self.our_submenu == 'Brownian')):
+                self.stop()
+                self.our_submenu = 'Brownian'
+                self.add_particle_list()
+            else:
+                pass
+        #JV: Conditions for "Free!" menu
+        elif(self.menu.current_tab.text == self.menu_list_str[1]):
+            if(self.menu_list[1].current_tab.text == 'Random Lattice' and not(self.our_submenu == 'Random Lattice')):
+                self.stop()
+                self.our_submenu = 'Random Lattice'
+                self.add_particle_list()
+            elif(self.menu_list[1].current_tab.text == 'Subsystems' and not(self.our_submenu == 'Subsystems')):
+                self.stop()
+                self.our_submenu = 'Subsystems'
+                self.add_particle_list()
+            elif(self.menu_list[1].current_tab.text == 'Brownian' and not(self.our_submenu == 'Brownian')):
+                self.stop()
+                self.our_submenu = 'Brownian'
+                self.add_particle_list()
+            else:
+                pass
+
+    def on_touch_Menu(self):
+        """JV: Similar to the previous functions, this function is evaluated when the menu buttons
+        are clicked, we will want to erase the previous particles that are in the screen and reset them to
+        the ones we want in the new menu"""
+
+        if(self.menu.current_tab.text == 'In a box' and not(self.our_menu == 'In a box')):
             self.stop()
-            self.submenu = 'Random Lattice'
+            self.our_menu == 'In a box'
             self.add_particle_list()
-        elif(self.partmenu.current_tab.text == 'Subsystems' and not(self.submenu == 'Subsystems')):
+        elif(self.menu.current_tab.text == 'Free!' and not(self.our_menu == 'Free!')):
             self.stop()
-            self.submenu = 'Subsystems'
-            self.add_particle_list()
-        elif(self.partmenu.current_tab.text == 'Brownian' and not(self.submenu == 'Brownian')):
-            self.stop()
-            self.submenu = 'Brownian'
+            self.our_menu = 'Free!'
             self.add_particle_list()
         else:
             pass
@@ -297,9 +357,13 @@ class main(BoxLayout):
         self.reset_particle_list();
 
         #JV: We check the part of the submenu that we are
-        if(self.partmenu.current_tab.text == 'Random Lattice'):
-            self.n = int(self.nrslider.value)
-            x,y = np.linspace(-self.L/2*0.8,self.L/2*0.8,self.n),np.linspace(-self.L/2*0.8,self.L/2*0.8,self.n)
+        if(self.our_submenu == 'Random Lattice'):
+            if(self.our_menu == "In a box"):
+                self.n = int(self.nrslider.value)
+            elif(self.our_menu == "Free!"):
+                self.n = int(self.nrslider2.value)
+
+            x,y = np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n)
             vmax = 10
             temp = 2.5
 
@@ -327,12 +391,16 @@ class main(BoxLayout):
                     self.previewlist.append([x[i],y[j],vx[k]*self.R,vy[k]*self.R])
                     k += 1
 
-        elif(self.partmenu.current_tab.text == 'Subsystems'):
-            self.n1 = int(self.n1slider.value)
-            self.n2 = int(self.n2slider.value)
+        elif(self.our_submenu == 'Subsystems'):
+            if(self.our_menu == "In a box"):
+                self.n1 = int(self.n1slider.value)
+                self.n2 = int(self.n2slider.value)
+            elif(self.our_menu == "Free!"):
+                self.n1 = int(self.n1slider2.value)
+                self.n2 = int(self.n2slider2.value)
 
-            x1,y1 = np.linspace(-self.L/2*0.8,-self.L/2*0.1,self.n1),np.linspace(-self.L/2*0.8,self.L/2*0.8,self.n1)
-            x2,y2 = np.linspace(self.L/2*0.1,self.L/2*0.8,self.n2),np.linspace(-self.L/2*0.8,self.L/2*0.8,self.n2)
+            x1,y1 = np.linspace(-self.L/2*0.9,-self.L/2*0.1,self.n1),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n1)
+            x2,y2 = np.linspace(self.L/2*0.1,self.L/2*0.9,self.n2),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n2)
 
             vmax1 = 10
             temp1 = 2
@@ -381,12 +449,16 @@ class main(BoxLayout):
                     self.previewlist.append([x2[i],y2[j],vx2[k]*self.R,vy2[k]*self.R])
                     k += 1
 
-        elif(self.partmenu.current_tab.text == 'Brownian'):
-            self.nbig = int(self.nbigslider.value)
-            self.nsmall = int(self.nsmallslider.value)
+        elif(self.our_submenu == 'Brownian'):
+            if(self.our_menu == "In a box"):
+                self.nbig = int(self.nbigslider.value)
+                self.nsmall = int(self.nsmallslider.value)
+            elif(self.our_menu == "Free!"):
+                self.nbig = int(self.nbigslider2.value)
+                self.nsmall = int(self.nsmallslider2.value)
 
             #JV: corresponding to the small particles variables
-            x,y = np.linspace(-self.L/2*0.8,self.L/2*0.8,self.nsmall),np.linspace(-self.L/2*0.8,self.L/2*0.8,self.nsmall)
+            x,y = np.linspace(-self.L/2*0.9,self.L/2*0.9,self.nsmall),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.nsmall)
             vmax = 10
             temp = 2.5
 
@@ -460,7 +532,7 @@ class main(BoxLayout):
         start = time.time()
 
         #JV: We create a PhySystem class by passing the array of particles and the physical units of the simulation as arguments
-        self.s = PhySystem(self.particles,[self.V0,self.R,self.L/self.R])
+        self.s = PhySystem(self.particles,[self.V0,self.R,self.L/self.R,self.our_menu])
 
         #JV: We put the +10 because we want to genarate more values than the ones we will show, we do that to be able to stop the simulation when it ends, to avoid problems
         #JV: It's not an elegant solution, but it works just fine. Check in the future, we could correct this maybe changing how the time steps work
@@ -501,7 +573,7 @@ class main(BoxLayout):
         self.obj.clear()
         self.plotbox.canvas.clear()
         #JV: This next block is used to clear and reset the line that follows the big particle in the Brownian section
-        if(self.submenu == 'Brownian'):
+        if(self.our_submenu == 'Brownian'):
             self.plotbox.canvas.remove(self.obj)
             self.points = []
             self.points.append(self.plotbox.size[0]/2)
@@ -529,7 +601,7 @@ class main(BoxLayout):
     def save(self,path,name):
         #I put all the relevant data in a numpy array and save it with pickle
         #The order is important for the loading process.
-        savedata = np.array([self.s,self.T,self.dt,self.L,self.previewlist,self.submenu,self.n1,self.n2,self.nsmall])
+        savedata = np.array([self.s,self.T,self.dt,self.L,self.previewlist,self.our_menu,self.our_submenu,self.n1,self.n2,self.nsmall])
         with open(os.path.join(path,name+'.dat'),'wb') as file:
             pickle.dump(savedata,file)
         self.dismiss_popup()
@@ -549,21 +621,22 @@ class main(BoxLayout):
         self.dt = savedata[2]
         self.L = savedata[3]
         self.previewlist = savedata[4]
-        self.submenu = savedata[5] #JV: To know in which submenu corresponds the simulation
-        self.n1 = savedata[6]
-        self.n2 = savedata[7]
-        self.nsmall = savedata[8]
+        self.our_menu = savedata[5] #JV: To know in which menu corresponds the simulation
+        self.our_submenu = savedata[6]
+        self.n1 = savedata[7]
+        self.n2 = savedata[8]
+        self.nsmall = savedata[9]
 
         #JV: We set all the submenu buttons to the "not-pressed" mode
         for k in range(0,len(self.submenu_list)-1):
             self.submenu_list[k].state = "normal"
 
         #JV: And now we set the state of the corresponding submenu to "pressed". Update this if you add more submenus
-        if(self.submenu == "Random Lattice"):
+        if(self.our_submenu == "Random Lattice"):
             self.submenu_list[0].state = "down"
-        elif(self.submenu == "Subsystems"):
+        elif(self.our_submenu == "Subsystems"):
             self.submenu_list[1].state = "down"
-        elif(self.submenu == "Brownian"):
+        elif(self.our_submenu == "Brownian"):
             self.submenu_list[2].state = "down"
 
         self.ready = True
@@ -632,14 +705,10 @@ class main(BoxLayout):
         the preview of the lattice mode before adding is not programmed (mainly because it is a random process)"""
 
         if(self.running == False and self.paused == False):
-            if(self.menu.current_tab.text == 'Particles'):
-                #JV: Add conditions when there will be more menus, now it's not needed
-
-#            else:
-                self.plotbox.canvas.clear()
-
+            #JV: We can add conditions when there will be different menus, now it's not needed
+            self.plotbox.canvas.clear()
             with self.plotbox.canvas:
-                if(self.submenu == 'Random Lattice'):
+                if(self.our_submenu == 'Random Lattice'):
                     for i in range(0,len(self.previewlist),1):
                         x0 = self.previewlist[i][0]
                         y0 = self.previewlist[i][1]
@@ -655,7 +724,7 @@ class main(BoxLayout):
                         Ellipse(pos=(x0*scale+w/2.-self.R*scale/2.,y0*scale+h/2.-self.R*scale/2.),size=(self.R*scale,self.R*scale))
                         Line(points=[x0*scale+w/2.,y0*scale+h/2.,vx0*scale+w/2.+x0*scale,vy0*scale+w/2.+y0*scale])
 
-                elif(self.submenu == 'Subsystems'):
+                elif(self.our_submenu == 'Subsystems'):
                     for i in range(0,len(self.previewlist),1):
                         if (i < (self.n1)**2):
                             x0 = self.previewlist[i][0]
@@ -687,7 +756,7 @@ class main(BoxLayout):
                             Ellipse(pos=(x0*scale+w/2.-self.R*scale/2.,y0*scale+h/2.-self.R*scale/2.),size=(self.R*scale,self.R*scale))
                             Line(points=[x0*scale+w/2.,y0*scale+h/2.,vx0*scale+w/2.+x0*scale,vy0*scale+w/2.+y0*scale])
 
-                elif(self.submenu == 'Brownian'):
+                elif(self.our_submenu == 'Brownian'):
                     for i in range(0,len(self.previewlist),1):
                         if (i < (self.nsmall)**2):
                             x0 = self.previewlist[i][0]
@@ -734,7 +803,7 @@ class main(BoxLayout):
 
         delta = 5./self.dt
 
-        if(self.submenu == 'Random Lattice'):
+        if(self.our_submenu == 'Random Lattice'):
             with self.plotbox.canvas:
                 for j in range(0,N):
                     Color(1.0,0.0,0.0)
@@ -795,7 +864,7 @@ class main(BoxLayout):
 
                 self.acuhistcanvas.draw()
 
-        elif(self.submenu == 'Subsystems'):
+        elif(self.our_submenu == 'Subsystems'):
             with self.plotbox.canvas:
                 for j in range(0,(self.n1)**2+(self.n2)**2):
                     if(j < self.n1**2):
@@ -861,7 +930,7 @@ class main(BoxLayout):
 
                 self.acuhistcanvas.draw()
 
-        elif(self.submenu == 'Brownian'):
+        elif(self.our_submenu == 'Brownian'):
             with self.plotbox.canvas:
                 for j in range(0,(self.nsmall)**2+(self.nbig)**2):
                     if(j < self.nsmall**2):
