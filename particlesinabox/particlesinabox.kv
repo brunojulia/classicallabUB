@@ -40,6 +40,7 @@
 	enplotbox: enplot_box.__self__
 	histbox: hist_box.__self__
 	acuhistbox: acuhist_box.__self__
+	x2posplotbox: x2posplot_box.__self__
 
 	rlmenu2: rl_tab2.__self__
 	sbsmenu2: sbs_tab2.__self__
@@ -124,6 +125,10 @@
 					text: 'Acu'
 					BoxLayout:
 						id: acuhist_box
+				TabbedPanelItem:
+					text: '<|x(t)-x(0)|^2>'
+					BoxLayout:
+						id: x2posplot_box
 		TabbedPanel:
 			id: menu
 			size_hint: (1, 0.5)
@@ -378,7 +383,7 @@
 										id: nr_slider2
 										size_hint: (1, 1)
 										min: 1
-										max: 22
+										max: 30
 										step: 1
 										on_touch_up: root.on_touch_Slider()
 						TabbedPanelItem:
