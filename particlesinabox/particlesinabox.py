@@ -2,6 +2,7 @@
 # particlesinabox.py
 # Requires physystem.py and particlesinabox.kv to run
 # -----------------------------------------------------------
+
 """
 Edited and modified by Jofre Vallès Muns, March 2020
 from the initial code by Arnau Jurado Romero.
@@ -109,6 +110,7 @@ import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from physystem import *
 
+
 #Kivy imports
 from kivy.app import App
 from kivy.uix.gridlayout import GridLayout
@@ -183,6 +185,16 @@ class main(BoxLayout):
     enplotax.xaxis.labelpad = -0.5
     enplotcanvas = FigureCanvasKivyAgg(enplot)
 
+    #JV: Xpos plot
+    x2posplot = Figure()
+    x2posplotax = x2posplot.add_subplot(111, xlabel='t', ylabel=r'$\langle|x(t)-x(0)|^{2}\rangle$')
+    x2posplotax.set_xlim([0,60]) #JV: This initial value should change if we change the total time of computation
+    x2posplotax.set_ylim([0,25])
+    x2posplot.subplots_adjust(0.125,0.19,0.9,0.9)
+    x2posplotax.yaxis.labelpad = 10
+    x2posplotax.xaxis.labelpad = -0.5
+    x2posplotcanvas = FigureCanvasKivyAgg(x2posplot)
+
     #These are for a different method of accumulation (see comments animation function)
     Vacu = np.array([])
     MBacu = np.zeros(100)
@@ -195,8 +207,8 @@ class main(BoxLayout):
         super(main, self).__init__(**kwargs)
         self.time = 0.
         #Here you can modify the time of computation and the step
-        self.T = 300
-        self.dt = 0.01
+        self.T = 20
+        self.dt = 0.005
 
         #Initialization of the speed button
         self.speedindex = 3
@@ -219,10 +231,11 @@ class main(BoxLayout):
 
         self.Rbig = 4*3.405 #JV: We define the initial value of the radius for the big particle in the "Brownian" submenu
 
-        #Initialization of histogram plots i l'energia
+        #Initialization of the plots
         self.histbox.add_widget(self.histcanvas)
         self.acuhistbox.add_widget(self.acuhistcanvas)
         self.enplotbox.add_widget(self.enplotcanvas)
+        self.x2posplotbox.add_widget(self.x2posplotcanvas)
 
         #Here you can modify the units of the simulation as well as the size of the box.
         self.V0 = 0.01 #eV
@@ -532,7 +545,7 @@ class main(BoxLayout):
         start = time.time()
 
         #JV: We create a PhySystem class by passing the array of particles and the physical units of the simulation as arguments
-        self.s = PhySystem(self.particles,[self.V0,self.R,self.L/self.R,self.our_menu])
+        self.s = PhySystem(self.particles,[self.V0,self.R,self.L/self.R,self.our_menu,self.our_submenu])
 
         #JV: We put the +10 because we want to genarate more values than the ones we will show, we do that to be able to stop the simulation when it ends, to avoid problems
         #JV: It's not an elegant solution, but it works just fine. Check in the future, we could correct this maybe changing how the time steps work
@@ -834,7 +847,7 @@ class main(BoxLayout):
 
                 self.enplotcanvas.draw()
 
-            if(self.plotmenu.current_tab.text == 'Momentum'): #Instantaneous momentum histogram
+            elif(self.plotmenu.current_tab.text == 'Momentum'): #Instantaneous momentum histogram
                 vs = np.linspace(0,self.s.V.max()+0.5,100) #JV: The +0.5 is because we want to see the whole last possible bar
 
                 self.histax.clear()
@@ -843,12 +856,12 @@ class main(BoxLayout):
                 self.histax.set_xlim([0,self.s.V.max()+0.5])
                 self.histax.set_ylim([0,np.ceil(self.s.MB.max())])
 
-                self.histax.hist(self.s.V[i,:],bins=np.arange(0,self.s.V.max()+1, 1),rwidth=0.5,density=True,color=[0.0,0.0,1.0])
+                self.histax.hist(self.s.V[i,:],bins=np.arange(0,self.s.V.max()+1, 0.334),rwidth=0.75,density=True,color=[0.0,0.0,1.0])
                 self.histax.plot(vs,self.s.MB[i,:],'r-')
                 self.histcanvas.draw()
 
 
-            if(self.plotmenu.current_tab.text == 'Acu'): #Accumulated momentum histogram
+            elif(self.plotmenu.current_tab.text == 'Acu'): #Accumulated momentum histogram
                 self.acuhistax.clear() #JV: We clean the graphic although we don't draw anything yet (to clean anything left in a previous simulation)
                 if(self.time > 40.):
                     vs = np.linspace(0,self.s.V.max()+0.5,100)
@@ -899,7 +912,7 @@ class main(BoxLayout):
 
                 self.enplotcanvas.draw()
 
-            if(self.plotmenu.current_tab.text == 'Momentum'): #Instantaneous momentum histogram
+            elif(self.plotmenu.current_tab.text == 'Momentum'): #Instantaneous momentum histogram
                 vs = np.linspace(0,self.s.V.max()+0.5,100) #JV: The +0.5 is because we want to see the whole last possible bar
 
                 self.histax.clear()
@@ -909,12 +922,12 @@ class main(BoxLayout):
                 self.histax.set_ylim([0,np.ceil(self.s.MB.max())])
 
                 #self.histax.hist(self.s.V[i,0:self.n1**2],bins=np.arange(0, self.s.V.max() + 1, 1),rwidth=0.75,density=True,color=[0.32,0.86,0.86])
-                self.histax.hist([self.s.V[i,0:self.n1**2],self.s.V[i,self.n1**2:self.n1**2+self.n2**2]],bins=np.arange(0, self.s.V.max() + 1, 1),rwidth=0.75,density=True,color=[[0.32,0.86,0.86],[0.43,0.96,0.16]])
+                self.histax.hist([self.s.V[i,0:self.n1**2],self.s.V[i,self.n1**2:self.n1**2+self.n2**2]],bins=np.arange(0, self.s.V.max() + 1, 0.334),rwidth=0.75,density=True,color=[[0.32,0.86,0.86],[0.43,0.96,0.16]])
                 self.histax.plot(vs,self.s.MB[i,:],'r-')
                 self.histcanvas.draw()
 
 
-            if(self.plotmenu.current_tab.text == 'Acu'): #Accumulated momentum histogram
+            elif(self.plotmenu.current_tab.text == 'Acu'): #Accumulated momentum histogram
                 self.acuhistax.clear()
                 if(self.time > 40.):
                     vs = np.linspace(0,self.s.V.max()+0.5,100)
@@ -968,7 +981,7 @@ class main(BoxLayout):
 
                 self.enplotcanvas.draw()
 
-            if(self.plotmenu.current_tab.text == 'Momentum'): #Instantaneous momentum histogram
+            elif(self.plotmenu.current_tab.text == 'Momentum'): #Instantaneous momentum histogram
                 vs = np.linspace(0,self.s.V.max()+0.5,100) #JV: The +0.5 is because we want to see the whole last possible bar
 
                 self.histax.clear()
@@ -977,12 +990,12 @@ class main(BoxLayout):
                 self.histax.set_xlim([0,self.s.V.max()+0.5])
                 self.histax.set_ylim([0,np.ceil(self.s.MB.max())])
 
-                self.histax.hist([self.s.V[i,0:self.nsmall**2],self.s.V[i,self.nsmall**2:self.nsmall**2+self.nbig**2]],bins=np.arange(0, self.s.V.max() + 1, 1),rwidth=0.75,density=True,color=[[0.32,0.86,0.86],[0.43,0.96,0.16]])
+                self.histax.hist([self.s.V[i,0:self.nsmall**2],self.s.V[i,self.nsmall**2:self.nsmall**2+self.nbig**2]],bins=np.arange(0, self.s.V.max() + 1, 0.334),rwidth=0.75,density=True,color=[[0.32,0.86,0.86],[0.43,0.96,0.16]])
                 self.histax.plot(vs,self.s.MB[i,:],'r-')
                 self.histcanvas.draw()
 
 
-            if(self.plotmenu.current_tab.text == 'Acu'): #Accumulated momentum histogram
+            elif(self.plotmenu.current_tab.text == 'Acu'): #Accumulated momentum histogram
                 self.acuhistax.clear()
                 if(self.time > 40.):
                     vs = np.linspace(0,self.s.V.max()+0.5,100)
@@ -997,6 +1010,20 @@ class main(BoxLayout):
                     self.acuhistax.plot(vs,self.s.MBacu[int((i-int((40./self.dt)))/delta)],'r-')
 
                 self.acuhistcanvas.draw()
+
+            elif(self.plotmenu.current_tab.text == '<|x(t)-x(0)|^2>'):
+                t = np.arange(self.dt,self.T+10+self.dt,self.dt)
+
+                self.x2posplotax.clear()
+                self.x2posplotax.set_xlabel('t')
+                self.x2posplotax.set_ylabel('X position')
+
+                self.x2posplotax.set_xlim([0,self.T])
+                self.x2posplotax.set_ylim([0,self.s.X2.max()+self.s.X2.max()*0.05])
+                self.x2posplotax.plot(t[0:i],self.s.X2[0:i],'g-')
+
+                self.x2posplotcanvas.draw()
+
 
 
         #JV: Check if the animations has arrived at the end of the performance, if it has, it will stop

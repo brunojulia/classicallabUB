@@ -167,6 +167,8 @@ class PhySystem:
         self.R = np.vectorize(lambda i: i.R)(particles)
 #        self.q = np.vectorize(lambda i: i.q)(particles)
         self.U = np.array([])
+        self.X2 = np.array([])
+
 
     def verlet(self,t,dt,r0,r1):
         """verlet(t,dt,r0,r1) performs one step of the verlet algorythm at time t
@@ -205,6 +207,21 @@ class PhySystem:
             v1[0,:] = np.where((r1[0,:]**2)+(self.R)**2 > (0.495*L)**2,-v1[0,:],v1[0,:])
             v1[1,:] = np.where((r1[1,:]**2)+(self.R)**2 > (0.495*L)**2,-v1[1,:],v1[1,:])
         elif(self.param[3] == "Free!"):
+            if(self.param[4] == "Brownian"):
+                #JV: We want to track the position of the brownian ball. If it goes through a wall, we will acknowledge it and save this into a variable that
+                # counts the amount of times it has gone through (imagine this as a grid of simulations in which we start at the center one)
+                if(r1[0,self.particles.size-1] > 0.5*L):
+                    print("passa x")
+                    self.wallcount[0] += 1 #JV: At position 0 in self.wallcount we track the x axis, we sum 1 if it goes through the right wall
+                elif(r1[0,self.particles.size-1] < -0.5*L):
+                    print("passa -x")
+                    self.wallcount[0] -= 1 #JV: If it goes through the left wall, we subtract 1
+                elif(r1[1,self.particles.size-1] > 0.5*L):
+                    print("passa y")
+                    self.wallcount[1] += 1 #JV: Now the same for the y axis
+                elif(r1[1,self.particles.size-1] < -0.5*L):
+                    print("passa -y")
+                    self.wallcount[1] -= 1
             r1[0,:] = np.where(r1[0,:] > 0.5*L,r1[0,:]-1*L,r1[0,:])
             r1[0,:] = np.where(r1[0,:] < -0.5*L,r1[0,:]+1*L,r1[0,:])
             r1[1,:] = np.where(r1[1,:] > 0.5*L,r1[1,:]-1*L,r1[1,:])
@@ -241,8 +258,6 @@ class PhySystem:
 
         return close_list
 
-
-
     def fv(self,X,Y,append):
         """fv(X,Y) represents the forces that act on all the particles at a particular time.
         It computes the matrix of forces using the positions given with X and Y which are
@@ -263,8 +278,8 @@ class PhySystem:
 
         """JV: X is an array that contains each position, mx is an nxn array that each column is the position of one particle (so it's a matrix
         that has n X rows) and mxt is the same but tranposed (so it's a matrix of n X columns)"""
-        MX, MXT = np.meshgrid(X,X)
-        MY, MYT = np.meshgrid(Y,Y)
+        MX, MXT = np.meshgrid(X,X,copy=False)
+        MY, MYT = np.meshgrid(Y,Y,copy=False)
 
         #JV: So dx is a nxn simetric array with 0 in the diagonal, and each position is the corresponding distance between the particles,
         # so the position [1,2] is the distance between partcle 1 and 2 (x1-x2), and so on
@@ -278,12 +293,6 @@ class PhySystem:
 
         if(self.param[3] == "Free!"):
         #JV: We do this to get the actual distance in the case of the "Free!" simulation
-#            print(dx)
-#            print("")
-#            print(dy)
-#            print("")
-#            print(r2)
-#            print("")
             dx_v2 = (abs(dx.copy())-1*L)
             r2_v2 = dx_v2**2+dy**2
             dx = np.where(r2 > r2_v2,dx_v2*np.sign(dx),dx)
@@ -296,12 +305,6 @@ class PhySystem:
             dx = np.where(r2 > r2_v2,dx_v2*np.sign(dx),dx)
             dy = np.where(r2 > r2_v2,dy_v2*np.sign(dy),dy)
             r2 = np.where(r2 > r2_v2,r2_v2,r2)
-#            print(dx)
-#            print("")
-#            print(dy)
-#            print("")
-#            print(r2)
-#            sys.exit()
 
         dUx = 0.
         dUy = 0.
@@ -310,10 +313,10 @@ class PhySystem:
 
         i = len(self.U)
 
-        if((i*self.dt)%0.5 == 0): #JV: every certain amount of steps we update the list
+        if((i*self.dt)%0.5== 0): #JV: every certain amount of steps we update the list
             self.close_list = self.close_particles_list(r2,self.Nlist) #JV: matrix that contains in every row the indexs of the m closest particles
 #            print(self.close_list)
-#            print("")
+#            print(i*self.dt)
 #            print(r2)
 #            sys.exit()
 
@@ -362,6 +365,11 @@ class PhySystem:
 
         if(append == True):
             self.U = np.append(self.U,np.sum(utot))
+            if(self.param[4] == "Brownian"):
+                if(self.wallcount[0] == 0):
+                    self.X2 = np.append(self.X2,(abs(X[N-1]))**2)
+                else:
+                    self.X2 = np.append(self.X2,(L*abs(self.wallcount[0])+(X[N-1]))**2)
 
         return f
 
@@ -376,12 +384,17 @@ class PhySystem:
 
         progress = t/T*100
 
+        if(self.param[4] == "Brownian"):
+        #JV: If we are simulating the brownian simulation, we initialize the array that will keep track if the brownian particle goes through a wall
+            self.wallcount = np.zeros([2])
+
         np.vectorize(lambda i: i.reset())(self.particles) #This line resets the particles to their initial position
 
         self.vel_verlet_on = True #JV: If it's true, it will compute with the velocity verlet algorithm, if it's not, it will compute with normal verlet
 
-        self.Nlist = int(2*(self.particles.size)**(1/2)) #JV:This variable defines the number of close particles that will be stored in the list (go to close_particles_list() for more info)
-
+        self.Nlist = int(1*(self.particles.size)**(1/2)) #JV:This variable defines the number of close particles that will be stored in the list (go to close_particles_list() for more info)
+#        self.Nlist = int(np.arctan(((self.particles.size)**(1/2))/8)*60/np.pi)
+        print(self.Nlist)
         #X,Y,VX,VY has the trajectories of the particles with two indexes that
         #access time and particles, respectively
         self.X = np.vectorize(lambda i: i.r[0])(self.particles)
@@ -403,7 +416,6 @@ class PhySystem:
         r2 = np.square(dx)+np.square(dy)
 
         self.close_list = self.close_particles_list(r2,self.Nlist) #JV: we first calculate the matrix that contains in every row the indexs of the m closest particles
-
 
         if(self.vel_verlet_on == True):
             #JV: We define the variables that we will need in the velocity verlet algorithm
