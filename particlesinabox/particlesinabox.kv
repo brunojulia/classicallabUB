@@ -27,6 +27,7 @@
 	speedbutton: speed_button.__self__
 	statuslabel: status_label.__self__
 	menu: menu.__self__
+	timeslider: time_slider.__self__
 
 	inaboxtab: inabox_tab.__self__
 	freetab: free_tab.__self__
@@ -40,7 +41,8 @@
 	enplotbox: enplot_box.__self__
 	histbox: hist_box.__self__
 	acuhistbox: acuhist_box.__self__
-	x2posplotbox: x2posplot_box.__self__
+	extraplotbox: extraplot_box.__self__
+	extraplottab: extraplot_tab.__self__
 
 	rlmenu2: rl_tab2.__self__
 	sbsmenu2: sbs_tab2.__self__
@@ -103,6 +105,22 @@
 				background_normal: 'Icons/load.png'
 				background_down: 'Icons/laodb.png'
 				on_press: root.loadpopup()
+		BoxLayout:
+			size_hint: (1, 0.1)
+			orientation: 'horizontal'
+			Label:
+				text: 'Computation Time:'
+				size_hint: (0.4, 1)
+			Label:
+				text: str(round(time_slider.value,2))
+				size_hint: (0.1, 1)
+			Slider:
+				id: time_slider
+				size_hint: (1, 1)
+				min: 10
+				max: 300
+				step: 5
+				on_touch_up: root.on_touch_Slider()
 		ProgressBar:
 			id: progress_bar
 			max: 100
@@ -126,9 +144,10 @@
 					BoxLayout:
 						id: acuhist_box
 				TabbedPanelItem:
-					text: '<|x(t)-x(0)|^2>'
+					text: 'Entropy'
+					id: extraplot_tab
 					BoxLayout:
-						id: x2posplot_box
+						id: extraplot_box
 		TabbedPanel:
 			id: menu
 			size_hint: (1, 0.5)
@@ -224,7 +243,7 @@
 						TabbedPanelItem:
 							text: 'Subsystems'
 							id: sbs_tab
-							on_touch_up: root.on_touch_Slider()
+							on_touch_up: root.on_touch_Submenu()
 							BoxLayout:
 								orientation: 'vertical'
 								size_hint: (1, 1)
@@ -263,7 +282,7 @@
 						TabbedPanelItem:
 							text: 'Brownian'
 							id: brw_tab
-							on_touch_up: root.on_touch_Slider()
+							on_touch_up: root.on_touch_Submenu()
 							BoxLayout:
 								orientation: 'vertical'
 								size_hint: (1, 1)

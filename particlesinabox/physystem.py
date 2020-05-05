@@ -168,6 +168,7 @@ class PhySystem:
 #        self.q = np.vectorize(lambda i: i.q)(particles)
         self.U = np.array([])
         self.X2 = np.array([])
+        self.entropy = np.array([])
 
 
     def verlet(self,t,dt,r0,r1):
@@ -363,14 +364,26 @@ class PhySystem:
 
             f[j,:] = f[j,:]+np.array([dUx,dUy])
 
+            #Now we check where this particle is in a RxR grid, that will help us to calcule the entropy.
+            if(self.param[4] == "Subsystems"):
+                if(j < self.param[5]**2): #JV: self.param[5] stores the number of n1xn1 type 1 particles
+                    self.grid[int((X[j]+0.495*L) / (L/self.G)), int((Y[j]+0.495*L) / (L/self.G)),0] += 1
+                else:
+                    self.grid[int((X[j]+0.495*L) / (L/self.G)), int((Y[j]+0.495*L) / (L/self.G)),1] += 1
+            else:
+                self.grid[int((X[j]+0.495*L) / (L/self.G)), int((Y[j]+0.495*L) / (L/self.G))] += 1
+
         if(append == True):
             self.U = np.append(self.U,np.sum(utot))
             if(self.param[4] == "Brownian"):
                 if(self.wallcount[0] == 0):
                     self.X2 = np.append(self.X2,(abs(X[N-1]))**2)
                 else:
-                    self.X2 = np.append(self.X2,(L*abs(self.wallcount[0])+(X[N-1]))**2)
+                    self.X2 = np.append(self.X2,(L*self.wallcount[0]+(X[N-1]))**2)
+            self.entropy = np.append(self.entropy,self.entropy_val)
 
+#        print(self.grid)
+#        sys.exit()
         return f
 
     def solveverlet(self,T,dt):
@@ -383,6 +396,16 @@ class PhySystem:
         self.n = int(T/dt)
 
         progress = t/T*100
+
+        #JV: Here we define the number of the GxG grid that we will need to calcule the entropy, change in order to change the precision of this grid
+        self.G = 4
+
+        if(self.param[4] == "Subsystems"): #JV: If we are on "Subsystems", we will count different the types of particles
+            self.grid = np.zeros([self.G,self.G,2])
+        else:
+            self.grid = np.zeros([self.G,self.G])
+
+        self.entropy_val = 0
 
         if(self.param[4] == "Brownian"):
         #JV: If we are simulating the brownian simulation, we initialize the array that will keep track if the brownian particle goes through a wall
@@ -448,6 +471,49 @@ class PhySystem:
                 X0,Y0 = X1,Y1
                 VX0,VY0 = VX1,VY1
 
+                #JV: Every amount of steps of time we calculate the entropy
+                update_entropy = 1
+                if(i % update_entropy == 0):
+
+                    self.entropy_val = 0
+                    sumagrid = np.sum(self.grid)
+
+                    if(self.param[4] == "Subsystems"):
+                        sumagrid_subs = np.zeros([2])
+                        sumagrid_subs[0] = np.sum(self.grid[:,:,0])
+                        sumagrid_subs[1] = sumagrid - sumagrid_subs[0]
+
+                        p0 = np.zeros([(self.G**2)*2])
+                        counter = 0
+                        for j in range(self.G):
+                            for k in range(self.G):
+                                for l in range(2):
+                                    if (self.grid[j,k,0]+self.grid[j,k,1] != 0):
+                                        p0[counter] = float(self.grid[j,k,l])/(self.grid[j,k,0]+self.grid[j,k,1])
+                                    else:
+                                        p0[counter] = 0
+                                    counter += 1
+
+                        pjc = p0/sum(p0)
+
+                        for j in range(counter):
+                            if(pjc[j] != 0):
+                                self.entropy_val += -pjc[j]*np.log(pjc[j])
+
+                    else:
+                        for j in range(self.G):
+                            for k in range(self.G):
+                                pji = float(self.grid[j,k])/(sumagrid)
+                                if(pji != 0):
+                                    self.entropy_val  += pji*np.log(pji)
+
+                        self.entropy_val = -self.entropy_val /(self.G**2)
+
+                    if(self.param[4] == "Subsystems"):
+                        self.grid = np.zeros([self.G,self.G,2])
+                    else:
+                        self.grid = np.zeros([self.G,self.G])
+
                 #Update and show progress through console
                 progress = t/T*100
                 if(i%1000 == 0):
@@ -485,6 +551,7 @@ class PhySystem:
         #Once the computation has ended, I compute the kinetic energy,
         #the magnitude of the velocity V and the temperature
         #(see doc for temperature definition)
+        np.savetxt("test.txt",self.X[:,self.particles.size-1])
         self.KE()
         self.V = np.sqrt((self.VX**2 + self.VY**2))
         self.T = (np.sum(self.V**2,axis=1)/(self.particles.size*2 - 2))
