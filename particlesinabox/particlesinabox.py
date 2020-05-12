@@ -135,7 +135,7 @@ import time #To check computation time
 from kivy.config import Config
 Config.set('kivy','window_icon','ub.png')
 
-#Definition of the save and load windows popups
+#JV: Definition of the save, the load and the advanced settings windows popups
 class savewindow(FloatLayout):
     save = ObjectProperty(None)
     text_input = ObjectProperty(None)
@@ -144,6 +144,12 @@ class savewindow(FloatLayout):
 class loadwindow(FloatLayout):
     load = ObjectProperty(None)
     cancel = ObjectProperty(None)
+
+class settingswindow(FloatLayout):
+    change_settings = ObjectProperty(None)
+    rbig_slider = ObjectProperty(None)
+    cancel = ObjectProperty(None)
+
 
 class main(BoxLayout):
 
@@ -215,7 +221,7 @@ class main(BoxLayout):
         self.change_speed()
 
         #JV: This variable saves the number of steps it draws the plots. If it's 1, it will update each step of time, etc. Smaller numbers makes less "fps" in the simulation
-        self.update_plots = 3
+        self.update_plots = 5
 
         #Set flags to False
         self.running = False #Checks if animation is running
@@ -234,11 +240,17 @@ class main(BoxLayout):
 
         self.Rbig = 4*3.405 #JV: We define the initial value of the radius for the big particle in the "Brownian" submenu
 
+        self.wallpos = 0 #JV: We define the initial value of the position of the wall in the "Walls" menu
+        self.holesize = 20 #JV: We define the initial value of the size of the hole (we need to change the kivy file if we change this value, go to the parameters of this slider and change the "value")
+        self.wallwidth = 4 #JV: We define the initial value of the width of the wall
+
         #Initialization of the plots
         self.histbox.add_widget(self.histcanvas)
         self.acuhistbox.add_widget(self.acuhistcanvas)
         self.enplotbox.add_widget(self.enplotcanvas)
         self.extraplotbox.add_widget(self.extraplotcanvas)
+
+        self.mass = 1 #JV: change this if you want to change the initial mass
 
         #Here you can modify the units of the simulation as well as the size of the box.
         self.V0 = 0.01 #eV
@@ -246,17 +258,20 @@ class main(BoxLayout):
         self.L = 200. #A
         self.M = 0.04 #kg/mol
 
-        #JV: This group will contain the trace of the big particle in the brownian part. We will use it to clear it from the canvas when we want
+        #JV: This group will contain the two lines that form the wall in the "Walls" menu
         self.obj = InstructionGroup()
-        self.points = []
+        self.point1 = []
+        self.point2 = []
+
+        self.obj2 = InstructionGroup() #JV: This group will contain the trace of the big particle in the "Brownian" submenu
 
         #JV: We create a list that contains our submenus, it will help us when we have to modify them. Update this if you add more submenus.
         self.submenu_list = [self.rlmenu,self.sbsmenu,self.brwmenu]
         self.submenu_list_str = ["Random Lattice","Subsystems","Brownian"] #JV: And a list with the names of each submenu
 
         #JV: We do the same for the menus. Update this if you add more menus.
-        self.menu_list = [self.inaboxmenu,self.freemenu]
-        self.menu_list_str = ["In a box","Free!"] #JV: And a list with the names of each menu
+        self.menu_list = [self.inaboxmenu,self.freemenu,self.wallmenu]
+        self.menu_list_str = ["In a box","Free!","Walls"] #JV: And a list with the names of each menu
 
         #JV: We make this so the simulation starts with one particle instead of 0, that could lead to some errors
         self.add_particle_list()
@@ -271,6 +286,7 @@ class main(BoxLayout):
         scale = b/self.L
         x = (touch.pos[0] - b/2.)/scale
         y = (touch.pos[1] - b/2.)/scale
+
 
     def on_touch_Slider(self):
         """JV: This function is evaluated whenever Slider is clicked, we will want to add a particle
@@ -290,7 +306,6 @@ class main(BoxLayout):
                 if(self.nrslider.value == self.n):
                     pass
                 else:
-                    print("hey ,", self.nrslider.value, self.n)
                     self.n = self.nrslider.value
                     self.add_particle_list()
             elif(self.our_submenu == 'Subsystems'):
@@ -329,74 +344,79 @@ class main(BoxLayout):
                     self.nbig = self.nbigslider2.value
                     self.nsmall = self.nsmallslider2.value
                     self.add_particle_list()
+        #JV: Conditions for "Walls" menu
+        elif(self.our_menu == self.menu_list_str[2]):
+            if(self.our_submenu == 'Random Lattice'):
+                if(self.nrslider3.value == self.n):
+                    pass
+                else:
+                    self.n = self.nrslider3.value
+                    self.add_particle_list()
+            elif(self.our_submenu == 'Subsystems'):
+                if(self.n1slider3.value == self.n1 and self.n2slider3.value == self.n2):
+                      pass
+                else:
+                      self.n1 = self.n1slider3.value
+                      self.n2 = self.n2slider3.value
+                      self.add_particle_list()
+            elif(self.our_submenu == 'Brownian'):
+                if(self.nbigslider3.value == self.nbig and self.nsmallslider3.value == self.nsmall):
+                    pass
+                else:
+                    self.nbig = self.nbigslider3.value
+                    self.nsmall = self.nsmallslider3.value
+                    self.add_particle_list()
+
+            if(self.wallslider.value == self.wallpos):
+                pass
+            else:
+                self.wallpos = self.wallslider.value
+                self.add_particle_list()
+
+            if(self.holeslider.value == self.holesize):
+                pass
+            else:
+                self.holesize = self.holeslider.value
+                self.add_particle_list()
 
     def on_touch_Submenu(self):
         """JV: Similar to the previous function, this function is evaluated when the submenu buttons
         are clicked, we will want to erase the previous particles that are in the screen and change them
         to the ones that we want for the new submenu"""
 
-        #JV: Conditions for "In a box" menu
-        if(self.menu.current_tab.text == self.menu_list_str[0]):
-            if(self.menu_list[0].current_tab.text  == 'Random Lattice' and not(self.our_submenu == 'Random Lattice')):
-                self.stop()
-                self.our_submenu = 'Random Lattice'
-                self.extraplottab.text = "Entropy"
-                self.extraplotax.clear()
-                self.extraplotax.set_xlabel('t')
-                self.extraplotax.set_ylabel('Entropy')
-                self.extraplotcanvas.draw()
-                self.add_particle_list()
-            elif(self.menu_list[0].current_tab.text  == 'Subsystems' and not(self.our_submenu == 'Subsystems')):
-                self.stop()
-                self.our_submenu = 'Subsystems'
-                self.extraplottab.text = "Entropy"
-                self.extraplotax.clear()
-                self.extraplotax.set_xlabel('t')
-                self.extraplotax.set_ylabel('Entropy')
-                self.extraplotcanvas.draw()
-                self.add_particle_list()
-            elif(self.menu_list[0].current_tab.text  == 'Brownian' and not(self.our_submenu == 'Brownian')):
-                self.stop()
-                self.our_submenu = 'Brownian'
-                self.extraplotax.clear()
-                self.extraplotax.set_xlabel('t')
-                self.extraplotax.set_ylabel(r'$\langle|x(t)-x(0)|^{2}\rangle$')
-                self.extraplotcanvas.draw()
-                self.extraplottab.text = "<|x(t)-x(0)|^2>"
-                self.add_particle_list()
-            else:
-                pass
-        #JV: Conditions for "Free!" menu
-        elif(self.menu.current_tab.text == self.menu_list_str[1]):
-            if(self.menu_list[1].current_tab.text  == 'Random Lattice' and not(self.our_submenu == 'Random Lattice')):
-                self.stop()
-                self.our_submenu = 'Random Lattice'
-                self.extraplottab.text = "Entropy"
-                self.extraplotax.clear()
-                self.extraplotax.set_xlabel('t')
-                self.extraplotax.set_ylabel('Entropy')
-                self.extraplotcanvas.draw()
-                self.add_particle_list()
-            elif(self.menu_list[1].current_tab.text  == 'Subsystems' and not(self.our_submenu == 'Subsystems')):
-                self.stop()
-                self.our_submenu = 'Subsystems'
-                self.extraplottab.text = "Entropy"
-                self.extraplotax.clear()
-                self.extraplotax.set_xlabel('t')
-                self.extraplotax.set_ylabel('Entropy')
-                self.extraplotcanvas.draw()
-                self.add_particle_list()
-            elif(self.menu_list[1].current_tab.text  == 'Brownian' and not(self.our_submenu == 'Brownian')):
-                self.stop()
-                self.our_submenu = 'Brownian'
-                self.extraplotax.clear()
-                self.extraplotax.set_xlabel('t')
-                self.extraplotax.set_ylabel(r'$\langle|x(t)-x(0)|^{2}\rangle$')
-                self.extraplotcanvas.draw()
-                self.extraplottab.text = "<|x(t)-x(0)|^2>"
-                self.add_particle_list()
-            else:
-                pass
+        #JV: Conditions for each menu
+        for i in range (len(self.menu_list)):
+            #JV: 0 corresponds to "In a box", 1 to "Free!", 2 to "Walls"
+            if(self.menu.current_tab.text == self.menu_list_str[i]):
+                if(self.menu_list[i].current_tab.text  == 'Random Lattice' and not(self.our_submenu == 'Random Lattice')):
+                    self.stop()
+                    self.our_submenu = 'Random Lattice'
+                    self.extraplottab.text = "Entropy"
+                    self.extraplotax.clear()
+                    self.extraplotax.set_xlabel('t')
+                    self.extraplotax.set_ylabel('Entropy')
+                    self.extraplotcanvas.draw()
+                    self.add_particle_list()
+                elif(self.menu_list[i].current_tab.text  == 'Subsystems' and not(self.our_submenu == 'Subsystems')):
+                    self.stop()
+                    self.our_submenu = 'Subsystems'
+                    self.extraplottab.text = "Entropy"
+                    self.extraplotax.clear()
+                    self.extraplotax.set_xlabel('t')
+                    self.extraplotax.set_ylabel('Entropy')
+                    self.extraplotcanvas.draw()
+                    self.add_particle_list()
+                elif(self.menu_list[i].current_tab.text  == 'Brownian' and not(self.our_submenu == 'Brownian')):
+                    self.stop()
+                    self.our_submenu = 'Brownian'
+                    self.extraplotax.clear()
+                    self.extraplotax.set_xlabel('t')
+                    self.extraplotax.set_ylabel(r'$\langle|x(t)-x(0)|^{2}\rangle$')
+                    self.extraplotcanvas.draw()
+                    self.extraplottab.text = "<|x(t)-x(0)|^2>"
+                    self.add_particle_list()
+                else:
+                    pass
 
     def on_touch_Menu(self):
         """JV: Similar to the previous functions, this function is evaluated when the menu buttons
@@ -405,11 +425,15 @@ class main(BoxLayout):
 
         if(self.menu.current_tab.text == 'In a box' and not(self.our_menu == 'In a box')):
             self.stop()
-            self.our_menu == 'In a box'
+            self.our_menu = 'In a box'
             self.add_particle_list()
         elif(self.menu.current_tab.text == 'Free!' and not(self.our_menu == 'Free!')):
             self.stop()
             self.our_menu = 'Free!'
+            self.add_particle_list()
+        elif(self.menu.current_tab.text == 'Walls' and not(self.our_menu == 'Walls')):
+            self.stop()
+            self.our_menu = 'Walls'
             self.add_particle_list()
         else:
             pass
@@ -429,8 +453,13 @@ class main(BoxLayout):
                 self.n = int(self.nrslider.value)
             elif(self.our_menu == "Free!"):
                 self.n = int(self.nrslider2.value)
+            elif(self.our_menu == "Walls"):
+                self.n = int(self.nrslider3.value)
 
-            x,y = np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n)
+            if(self.our_menu == "Walls"):
+                x,y = np.linspace(-self.L/2*0.9,self.wallpos-self.L*0.05,self.n),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n)
+            else:
+                x,y = np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n)
             vmax = 10
             temp = 2.5
 
@@ -450,9 +479,9 @@ class main(BoxLayout):
             k = 0
             for i in range(0,self.n):
                 for j in range(0,self.n):
-                    #JV: In "particles" we have the positions and velocities in kivy units (the velocities are already transformed,
+                    #JV: In "particles" we have the positions and velocities in reduced units (the velocities are already transformed,
                     # but for the positions we need to include the scale factor)
-                    self.particles = np.append(self.particles,particle(self.massslider.value,self.charge,self.R,np.array([x[i],y[j]])/self.R,np.array([vx[k],vy[k]]),2))
+                    self.particles = np.append(self.particles,particle(self.mass,self.charge,self.R/self.R,np.array([x[i],y[j]])/self.R,np.array([vx[k],vy[k]]),2))
 
                     #JV: In this new array we will have the positions and velocities in the physical units (Angstrom,...)
                     self.previewlist.append([x[i],y[j],vx[k]*self.R,vy[k]*self.R])
@@ -466,11 +495,14 @@ class main(BoxLayout):
                 self.n1 = int(self.n1slider2.value)
                 self.n2 = int(self.n2slider2.value)
 
-            x1,y1 = np.linspace(-self.L/2*0.9,-self.L/2*0.1,self.n1),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n1)
-            x2,y2 = np.linspace(self.L/2*0.1,self.L/2*0.9,self.n2),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n2)
+            if(self.our_menu == "Walls"):
+                x1,y1 = np.linspace(-self.L/2*0.9,self.wallpos-self.L*0.05,self.n1),np.linspace(self.L/2*0.9,self.L/2*0.1,self.n1)
+                x2,y2 = np.linspace(-self.L/2*0.9,self.wallpos-self.L*0.05,self.n2),np.linspace(-self.L/2*0.9,-self.L/2*0.1,self.n2)
+            else:
+                x1,y1 = np.linspace(-self.L/2*0.9,-self.L/2*0.1,self.n1),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n1)
+                x2,y2 = np.linspace(self.L/2*0.1,self.L/2*0.9,self.n2),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n2)
 
-            vmax1 = 10
-            temp1 = 2
+            temp1 = 1
             theta1 = np.random.ranf(self.n1**2)*2*np.pi
             vx1,vy1 = 0.5*np.cos(theta1),0.5*np.sin(theta1)
             vcm1 = np.array([np.sum(vx1),np.sum(vy1)])/self.n1**2
@@ -483,8 +515,7 @@ class main(BoxLayout):
                 vx1 = (vx1-vcm1[0])*np.sqrt(2*temp1/kin1)
                 vy1 = (vy1-vcm1[1])*np.sqrt(2*temp1/kin1)
 
-            vmax2 = 10
-            temp2 = 7
+            temp2 = 3
             theta2 = np.random.ranf(self.n2**2)*2*np.pi
             vx2,vy2 = 0.5*np.cos(theta2),0.5*np.sin(theta2)
             vcm2 = np.array([np.sum(vx2),np.sum(vy2)])/self.n2**2
@@ -502,7 +533,7 @@ class main(BoxLayout):
                 for j in range(0,self.n1):
                     #JV: In "particles" we have the positions and velocities in kivy units (the velocities are already transformed,
                     # but for the positions we need to include the scale factor)
-                    self.particles = np.append(self.particles,particle(self.massslider.value,self.charge,self.R,np.array([x1[i],y1[j]])/self.R,np.array([vx1[k],vy1[k]]),2))
+                    self.particles = np.append(self.particles,particle(self.mass,self.charge,self.R/self.R,np.array([x1[i],y1[j]])/self.R,np.array([vx1[k],vy1[k]]),2))
 
                     #JV: In this new array we will have the positions and velocities in the physical units (Angstrom,...)
                     self.previewlist.append([x1[i],y1[j],vx1[k]*self.R,vy1[k]*self.R])
@@ -511,7 +542,7 @@ class main(BoxLayout):
             k = 0
             for i in range(0,self.n2):
                 for j in range(0,self.n2):
-                    self.particles = np.append(self.particles,particle(self.massslider.value,self.charge,self.R,np.array([x2[i],y2[j]])/self.R,np.array([vx2[k],vy2[k]]),2))
+                    self.particles = np.append(self.particles,particle(self.mass,self.charge,self.R/self.R,np.array([x2[i],y2[j]])/self.R,np.array([vx2[k],vy2[k]]),2))
 
                     self.previewlist.append([x2[i],y2[j],vx2[k]*self.R,vy2[k]*self.R])
                     k += 1
@@ -525,7 +556,11 @@ class main(BoxLayout):
                 self.nsmall = int(self.nsmallslider2.value)
 
             #JV: corresponding to the small particles variables
-            x,y = np.linspace(-self.L/2*0.9,self.L/2*0.9,self.nsmall),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.nsmall)
+            if(self.our_menu == "Walls"):
+                x,y = np.linspace(-self.L/2*0.9,self.wallpos-self.L*0.05,self.nsmall),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.nsmall)
+            else:
+                x,y = np.linspace(-self.L/2*0.9,self.L/2*0.9,self.nsmall),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.nsmall)
+
             vmax = 10
             temp = 2.5
 
@@ -540,13 +575,17 @@ class main(BoxLayout):
             vy = (vy-vcm[1])*np.sqrt(2*temp/kin)
 
             #JV: now for the big particle(s):
-            xbig,ybig = (0,0)
+            if(self.our_menu == "Walls"):
+                xbig,ybig = (-(self.L/2-self.wallpos)/2,0)
+            else:
+                xbig,ybig = (0,0)
+
             vxbig,vybig = (0,0)
 
             k = 0
             for i in range(0,self.nsmall):
                 for j in range(0,self.nsmall):
-                    self.particles = np.append(self.particles,particle(self.massslider.value,self.charge,self.R,np.array([x[i],y[j]])/self.R,np.array([vx[k],vy[k]]),2))
+                    self.particles = np.append(self.particles,particle(self.mass,self.charge,self.R/self.R,np.array([x[i],y[j]])/self.R,np.array([vx[k],vy[k]]),2))
 
                     self.previewlist.append([x[i],y[j],vx[k]*self.R,vy[k]*self.R])
                     k += 1
@@ -554,7 +593,7 @@ class main(BoxLayout):
             for i in range(0, self.nbig):
                 for j in range(0,self.nbig):
                     #JV: Because we want the supose that all the particles have the same density, and we are on a 2D field, we include the (self.Rbig/self.R)**2 factor on the mass
-                    self.particles = np.append(self.particles,particle(self.massslider.value*((self.Rbig/self.R)**2),self.charge,self.Rbig,np.array([xbig,ybig])/self.R,np.array([vxbig,vybig]),2))
+                    self.particles = np.append(self.particles,particle(self.mass*((self.Rbig/self.R)**2),self.charge,self.Rbig/self.R,np.array([xbig,ybig])/self.R,np.array([vxbig,vybig]),2))
 
                     self.previewlist.append([xbig,ybig,vxbig*self.R,vybig*self.R])
 
@@ -570,7 +609,6 @@ class main(BoxLayout):
         self.stop()
         self.particles = np.array([])
         self.previewlist = []
-
         self.ready = False
         self.pcbutton.background_normal = 'Icons/compute.png'
         self.pcbutton.background_down = 'Icons/computeb.png'
@@ -599,7 +637,8 @@ class main(BoxLayout):
         start = time.time()
 
         #JV: We create a PhySystem class by passing the array of particles and the physical units of the simulation as arguments
-        self.s = PhySystem(self.particles,[self.V0,self.R,self.L/self.R,self.our_menu,self.our_submenu,self.n1,self.n2])
+        #JV: self.wallpos, self.holesize, self.wallwidth are in Angtroms, so we need to divide it by self.R to have it in reduced units (the units we work in physystem)
+        self.s = PhySystem(self.particles,[self.V0,self.R,self.L/self.R,self.our_menu,self.our_submenu,self.n1,self.n2,self.wallpos/self.R,self.holesize/self.R,self.wallwidth/self.R])
 
         #JV: We put the +10 because we want to genarate more values than the ones we will show, we do that to be able to stop the simulation when it ends, to avoid problems
         #JV: It's not an elegant solution, but it works just fine. Check in the future, we could correct this maybe changing how the time steps work
@@ -637,19 +676,9 @@ class main(BoxLayout):
         self.pause()
         self.paused = False
         self.time = 0
-        self.obj.clear()
+        self.obj2.clear()
         self.plotbox.canvas.clear()
-        #JV: This next block is used to clear and reset the line that follows the big particle in the Brownian section
-        if(self.our_submenu == 'Brownian'):
-            self.plotbox.canvas.remove(self.obj)
-            self.points = []
-            self.points.append(self.plotbox.size[0]/2)
-            self.points.append(self.plotbox.size[1]/2)
-            self.points.append(self.plotbox.size[0]/2)
-            self.points.append(self.plotbox.size[1]/2)
-            self.obj.add(Color(0.43,0.96,0.16))
-            self.obj.add(Line(points=self.points,width = 0))
-            self.plotbox.canvas.add(self.obj)
+        self.acucounter = 0
 
     def change_speed(self):
         #This simply cicles the sl list with the speed multipliers, self.speed is later
@@ -668,7 +697,7 @@ class main(BoxLayout):
     def save(self,path,name):
         #I put all the relevant data in a numpy array and save it with pickle
         #The order is important for the loading process.
-        savedata = np.array([self.s,self.T,self.dt,self.L,self.previewlist,self.our_menu,self.our_submenu,self.n1,self.n2,self.nsmall])
+        savedata = np.array([self.s,self.T,self.dt,self.L,self.previewlist,self.our_menu,self.our_submenu,self.n1,self.n2,self.nsmall,self.wallpos,self.holesize,self.Rbig])
         with open(os.path.join(path,name+'.dat'),'wb') as file:
             pickle.dump(savedata,file)
         self.dismiss_popup()
@@ -677,6 +706,16 @@ class main(BoxLayout):
         content = savewindow(save = self.save, cancel = self.dismiss_popup)
         self._popup = Popup(title='Save File', content = content, size_hint=(1,1))
         self._popup.open()
+
+    def advanced_settings(self):
+        content = settingswindow(change_settings = self.change_settings, cancel = self.dismiss_popup)
+        self._popup = Popup(title='Advanced Settings', content = content, size_hint = (1,1))
+        self._popup.content.rbig_slider.value = int(self.Rbig/self.R)
+        self._popup.open()
+
+    def change_settings(self):
+        self.Rbig = self._popup.content.rbig_slider.value * self.R
+        self.add_particle_list()
 
     def load(self,path,name,demo=False):
         self.stop()
@@ -693,19 +732,32 @@ class main(BoxLayout):
         self.n1 = savedata[7]
         self.n2 = savedata[8]
         self.nsmall = savedata[9]
+        self.wallpos = savedata[10]
+        self.holesize = savedata[11]
+        self.Rbig = savedata[12]
 
         self.timeslider.value = self.T
         self.n = int(np.sqrt(self.s.particles.size))
 
-        #JV: And now we set the state of the corresponding menu to "pressed". Update this if you add more submenus
+        #JV: And now we set the state of the corresponding menu to "pressed". Update this if you add more menus or submenus
         if(self.our_menu == "In a box"):
             self.menu.switch_to(self.inaboxtab)
 
         elif(self.our_menu == "Free!"):
             self.menu.switch_to(self.freetab)
 
-        #JV: Now we do the same for the submenu buttons
+        elif(self.our_menu == "Walls"):
+            self.menu.switch_to(self.walltab)
+            self.wallslider.value = self.wallpos #JV: Now we need to update also the specific sliders of this menu
+            self.holeslider.value = self.holesize
+
+          #JV: Now we do the same for the submenu buttons, and we update the sliders to the actual simulation parameter
         if(self.our_submenu == "Random Lattice"):
+            self.extraplotax.clear()
+            self.extraplotax.set_xlabel('t')
+            self.extraplotax.set_ylabel('Entropy')
+            self.extraplotcanvas.draw()
+            self.extraplottab.text = "Entropy"
 
             if(self.our_menu == "In a box"):
                 self.inaboxmenu.switch_to(self.rlmenu)
@@ -714,6 +766,10 @@ class main(BoxLayout):
             elif(self.our_menu == "Free!"):
                 self.freemenu.switch_to(self.rlmenu2)
                 self.nrslider2.value = int(np.sqrt(self.s.particles.size))
+
+            elif(self.our_menu == "Walls"):
+                self.wallmenu.switch_to(self.rlmenu3)
+                self.nrslider3.value = int(np.sqrt(self.s.particles.size))
 
         elif(self.our_submenu == "Subsystems"):
 
@@ -727,7 +783,17 @@ class main(BoxLayout):
                 self.n1slider2.value = self.n1
                 self.n2slider2.value = self.n2
 
+            elif(self.our_menu == "Walls"):
+                self.wallmenu.switch_to(self.sbsmenu3)
+                self.n1slider3.value = self.n1
+                self.n2slider3.value = self.n2
+
         elif(self.our_submenu == "Brownian"):
+            self.extraplotax.clear()
+            self.extraplotax.set_xlabel('t')
+            self.extraplotax.set_ylabel(r'$\langle|x(t)-x(0)|^{2}\rangle$')
+            self.extraplotcanvas.draw()
+            self.extraplottab.text = "<|x(t)-x(0)|^2>"
 
             if(self.our_menu == "In a box"):
                 self.inaboxmenu.switch_to(self.brwmenu)
@@ -738,6 +804,11 @@ class main(BoxLayout):
                 self.freemenu.switch_to(self.brwmenu2)
                 self.nbigslider2.value = int(np.sqrt(self.s.particles.size - self.nsmall**2))
                 self.nsmallslider2.value = self.nsmall
+
+            elif(self.our_menu == "Walls"):
+                self.wallmenu.switch_to(self.brwmenu3)
+                self.nbigslider3.value = int(np.sqrt(self.s.particles.size - self.nsmall**2))
+                self.nsmallslider3.value = self.nsmall
 
         self.ready = True
         self.pcbutton.background_normal = 'Icons/play.png'
@@ -888,6 +959,32 @@ class main(BoxLayout):
                             Ellipse(pos=(x0*scale+w/2.-self.Rbig*scale/2.,y0*scale+h/2.-self.Rbig*scale/2.),size=(self.Rbig*scale,self.Rbig*scale))
                             Line(points=[x0*scale+w/2.,y0*scale+h/2.,vx0*scale+w/2.+x0*scale,vy0*scale+w/2.+y0*scale])
 
+                if(self.our_menu == "Walls"):
+                    w = self.plotbox.size[0]
+                    h = self.plotbox.size[1]
+                    b = min(w,h)
+                    scale = b/self.L
+
+                    self.obj = InstructionGroup()
+                    self.plotbox.canvas.remove(self.obj)
+
+                    #JV: We need to multiply by scale to transform from Angstrom units to Kivy units, that ajust depending on the resulution
+                    self.point1.clear()
+                    self.point2.clear()
+                    self.point1.append(w/2+self.wallpos*scale)
+                    self.point1.append(h)
+                    self.point1.append(w/2+self.wallpos*scale)
+                    self.point1.append(h/2 + self.holesize*scale/2)
+                    self.point2.append(w/2+self.wallpos*scale)
+                    self.point2.append(h/2 - self.holesize*scale/2)
+                    self.point2.append(w/2+self.wallpos*scale)
+                    self.point2.append(0)
+                    self.obj.add(Color(0.37,0.01,0.95))
+                    self.obj.add(Line(points = self.point1, width = self.wallwidth))
+                    self.obj.add(Line(points = self.point2, width = self.wallwidth))
+                    self.plotbox.canvas.add(self.obj)
+
+
     def animate(self,interval):
         """Draw all the particles for the animation"""
 
@@ -902,6 +999,9 @@ class main(BoxLayout):
         i = int(self.time/self.dt)
 
         delta = 5./self.dt
+
+        if(self.our_menu == "Walls"):
+            self.plotbox.canvas.add(self.obj)
 
         if(self.our_submenu == 'Random Lattice'):
             with self.plotbox.canvas:
@@ -948,6 +1048,7 @@ class main(BoxLayout):
                     self.histax.set_ylim([0,np.ceil(self.s.MB.max())])
 
                     self.histax.hist(self.s.V[i,:],bins=np.arange(0,self.s.V.max()+1, 0.334),rwidth=0.75,density=True,color=[0.0,0.0,1.0])
+                    self.histax.text(vs[np.argmax(self.s.MB[i,:])-int(len(vs)*0.2)],self.s.MB[i,:].max(),"T = "+str(np.round(self.s.T[i],decimals=3)), fontsize=15, color = "red", alpha = 0.85)
                     self.histax.plot(vs,self.s.MB[i,:],'r-')
                     self.histcanvas.draw()
 
@@ -982,7 +1083,7 @@ class main(BoxLayout):
                     self.extraplotax.set_ylim([self.s.entropy.min(),self.s.entropy.max()+self.s.entropy.max()*0.05])
                     self.extraplotax.plot(t[0:i],self.s.entropy[0:i],'g-')
 
-                    self.extraplotaxcanvas.draw()
+                    self.extraplotcanvas.draw()
 
         elif(self.our_submenu == 'Subsystems'):
             with self.plotbox.canvas:
@@ -1032,8 +1133,15 @@ class main(BoxLayout):
                     self.histax.set_xlim([0,self.s.V.max()+0.5])
                     self.histax.set_ylim([0,np.ceil(self.s.MB.max())])
 
-                    #self.histax.hist(self.s.V[i,0:self.n1**2],bins=np.arange(0, self.s.V.max() + 1, 1),rwidth=0.75,density=True,color=[0.32,0.86,0.86])
-                    self.histax.hist([self.s.V[i,0:self.n1**2],self.s.V[i,self.n1**2:self.n1**2+self.n2**2]],bins=np.arange(0, self.s.V.max() + 1, 0.334),rwidth=0.75,density=True,color=[[0.32,0.86,0.86],[0.43,0.96,0.16]])
+                    self.histax.hist([self.s.V[i,0:self.n1**2],self.s.V[i,self.n1**2:self.n1**2+self.n2**2]],bins=np.arange(0, self.s.V.max() + 1, 0.334),rwidth=0.8,density=True,color=[[0.32,0.86,0.86],[0.43,0.96,0.16]])
+                    #JV: We now plot the texts that show the temperature of each types of particles
+#                    self.histax.text(vs[np.argmax(self.s.MB1[i,:])],self.s.MB1[i,:].max()+self.s.MB1[i,:].max()*0.05,"T1 = "+str(np.round(self.s.T1[i],decimals=3)), fontsize=15, color = "blue", alpha = 0.75)
+#                    self.histax.text(vs[np.argmax(self.s.MB2[i,:])],self.s.MB2[i,:].max()-self.s.MB2[i,:].max()*0.05-0.075,"T2 = "+str(np.round(self.s.T2[i],decimals=3)), fontsize=15, color = "green", alpha = 0.75)
+                    self.histax.text(self.s.V.max()-2.5,0.8,"T1 = "+str(np.round(self.s.T1[i],decimals=3)), fontsize=15, color = "blue", alpha = 0.75)
+                    self.histax.text(self.s.V.max()-1,0.8,"T2 = "+str(np.round(self.s.T2[i],decimals=3)), fontsize=15, color = "green", alpha = 0.75)
+                    self.histax.text(vs[np.argmax(self.s.MB[i,:])-int(len(vs)*0.2)],self.s.MB[i,:].max(),"T = "+str(np.round(self.s.T[i],decimals=3)), fontsize=15, color = "red", alpha = 0.85)
+                    self.histax.plot(vs,self.s.MB1[i,:],'b-', alpha = 0.5)
+                    self.histax.plot(vs,self.s.MB2[i,:],'g-', alpha = 0.5)
                     self.histax.plot(vs,self.s.MB[i,:],'r-')
                     self.histcanvas.draw()
 
@@ -1080,11 +1188,11 @@ class main(BoxLayout):
 #                        Color(0.43,0.96,0.16)
 #                        Ellipse(pos=((self.s.X[i,j])*scale*self.R+w/2.-self.Rbig*scale/2.,(self.s.Y[i,j])*scale*self.R+h/2.-self.Rbig*scale/2.),size=(self.Rbig*scale,self.Rbig*scale))
 #                        if(abs(self.s.X[i,j]-self.s.X[i-10,j]) < 0.5*self.L/self.R and abs(self.s.Y[i,j]-self.s.Y[i-10,j]) < 0.5*self.L/self.R):
-#                            self.plotbox.canvas.add(self.obj)
+#                            self.plotbox.canvas.add(self.obj2)
 #                            self.points.append((self.s.X[i,j])*scale*self.R+w/2.)
 #                            self.points.append((self.s.Y[i,j])*scale*self.R+h/2.)
-#                            self.obj.add(Color(0.43,0.96,0.16))
-#                            self.obj.add(Line(points=self.points,width = 1.5))
+#                            self.obj2.add(Color(0.43,0.96,0.16))
+#                            self.obj2.add(Line(points=self.points,width = 1.5))
 #                        else:
 #                            print("hey")
 #                            self.points.append((self.s.X[i,j])*scale*self.R+w/2.)
@@ -1094,11 +1202,11 @@ class main(BoxLayout):
                         Color(0.43,0.96,0.16)
                         Ellipse(pos=((self.s.X[i,j])*scale*self.R+w/2.-self.Rbig*scale/2.,(self.s.Y[i,j])*scale*self.R+h/2.-self.Rbig*scale/2.),size=(self.Rbig*scale,self.Rbig*scale))
                         if(abs(self.s.X[i,j]-self.s.X[i-1,j]) < 0.3*self.L and abs(self.s.Y[i,j]-self.s.Y[i-1,j]) < 0.3*self.L):
-                            self.plotbox.canvas.add(self.obj)
+                            self.plotbox.canvas.add(self.obj2)
 #                            self.points.append((self.s.X[i,j])*scale*self.R+w/2.)
 #                            self.points.append((self.s.Y[i,j])*scale*self.R+h/2.)
-                            self.obj.add(Color(0.43,0.96,0.16))
-                            self.obj.add(Ellipse(pos=((self.s.X[i,j])*scale*self.R+w/2.,(self.s.Y[i,j])*scale*self.R+h/2.),size=(self.Rbig*scale/10,self.Rbig*scale/10)))
+                            self.obj2.add(Color(0.43,0.96,0.16))
+                            self.obj2.add(Ellipse(pos=((self.s.X[i,j])*scale*self.R+w/2.,(self.s.Y[i,j])*scale*self.R+h/2.),size=(self.Rbig*scale/10,self.Rbig*scale/10)))
 #                        print(self.s.Y[i,j]-self.s.Y[i-1,j], self.L/self.R)
 
 
@@ -1137,6 +1245,7 @@ class main(BoxLayout):
                     self.histax.set_ylim([0,np.ceil(self.s.MB.max())])
 
                     self.histax.hist([self.s.V[i,0:self.nsmall**2],self.s.V[i,self.nsmall**2:self.nsmall**2+self.nbig**2]],bins=np.arange(0, self.s.V.max() + 1, 0.334),rwidth=0.75,density=True,color=[[0.32,0.86,0.86],[0.43,0.96,0.16]])
+                    self.histax.text(vs[np.argmax(self.s.MB[i,:])-int(len(vs)*0.2)],self.s.MB[i,:].max(),"T = "+str(np.round(self.s.T[i],decimals=3)), fontsize=15, color = "red", alpha = 0.85)
                     self.histax.plot(vs,self.s.MB[i,:],'r-')
                     self.histcanvas.draw()
 
@@ -1175,6 +1284,30 @@ class main(BoxLayout):
                     self.extraplotcanvas.draw()
 
 
+        if(self.our_menu == "Walls"):
+            w = self.plotbox.size[0]
+            h = self.plotbox.size[1]
+            b = min(w,h)
+            scale = b/self.L
+
+            self.obj = InstructionGroup()
+            self.plotbox.canvas.remove(self.obj)
+
+            #JV: We need to multiply by scale to transform from Angstrom units to Kivy units, that ajust depending on the resulution
+            self.point1.clear()
+            self.point2.clear()
+            self.point1.append(w/2+self.wallpos*scale)
+            self.point1.append(h)
+            self.point1.append(w/2+self.wallpos*scale)
+            self.point1.append(h/2 + self.holesize*scale/2)
+            self.point2.append(w/2+self.wallpos*scale)
+            self.point2.append(h/2 - self.holesize*scale/2)
+            self.point2.append(w/2+self.wallpos*scale)
+            self.point2.append(0)
+            self.obj.add(Color(0.37,0.01,0.95))
+            self.obj.add(Line(points = self.point1, width = self.wallwidth))
+            self.obj.add(Line(points = self.point2, width = self.wallwidth))
+            self.plotbox.canvas.add(self.obj)
 
         #JV: Check if the animations has arrived at the end of the performance, if it has, it will stop
         if(i >= n):

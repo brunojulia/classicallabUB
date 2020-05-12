@@ -8,10 +8,10 @@ def dLJverlet(x,r2,R1,R2,param):
     this only changes when calling the interaction on the algotyhm,
     for all isotrope interactions this should still hold."""
     V = param[0]
-    sig = param[1] #JV: This is the system units, so we will calculate the new sigma relative to this
+    sig = param[1]
     L = param[2]
-    rc = (2**(1/6))*((R1+R2)/(2*sig))
-    sig_int = (R1+R2)/(2*sig) #JV: This is the sigma of the interaction (in the system units)
+    rc = (2**(1/6))*((R1+R2)/(2))
+    sig_int = (R1+R2)/(2) #JV: This is the sigma of the interaction (in the system units). We don't need to divide by sigma because we are already working with reduced units
 
     #JV: Because we are working on reduced units (from the values of the Argon gas)
     # we want need to divide our radius by the radius of the Argon gas
@@ -28,8 +28,8 @@ def LJverlet(r2,R1,R2,param):
     V = param[0]
     sig = param[1] #JV: This is the system units, so we will calculate the new sigma relative to this
     L = param[2]
-    rc = (2**(1/6))*((R1+R2)/(2*sig))
-    sig_int = (R1+R2)/(2*sig) #JV: This is the sigma of the interaction (in the system units)
+    rc = (2**(1/6))*((R1+R2)/(2))
+    sig_int = (R1+R2)/(2) #JV: This is the sigma of the interaction (in the system units)
 
     """JV: In doing this, we are actually taking the LJ potential truncated at the minimum potentail eneregy, at a distance
     r=(2**(1/6))*sigma, and we shift upward by the amount of minimum energy on the energy scale so the energy and the force are
@@ -182,7 +182,7 @@ class PhySystem:
         r2 = (2*r1 - r0 + np.transpose(self.fv(r1[0,:],r1[1,:],True)) * (dt**2))
         #The transpose is necessary because I messed up the shapes when I did the fv function.
 
-        #JV: this needs to change in order to include particles with mass diferent than 1 (in reduced units),
+        #JV: this needs to change if we want to include particles with mass diferent than 1 (in reduced units),
         # in other words, diferent particles than the Argon gas
 
         return r2[0,:],r2[1,:]
@@ -199,14 +199,10 @@ class PhySystem:
 
         L = self.param[2]
 
-#        print(r1)
-#        print("")
-#        print(0.5*L)
-#        sys.exit()
         if(self.param[3] == "In a box"):
             #JV: Border conditions, elastic collision
-            v1[0,:] = np.where((r1[0,:]**2)+(self.R)**2 > (0.495*L)**2,-v1[0,:],v1[0,:])
-            v1[1,:] = np.where((r1[1,:]**2)+(self.R)**2 > (0.495*L)**2,-v1[1,:],v1[1,:])
+            v1[0,:] = np.where((r1[0,:]**2)+(self.R)**2 > (0.49*L)**2,-v1[0,:],v1[0,:])
+            v1[1,:] = np.where((r1[1,:]**2)+(self.R)**2 > (0.49*L)**2,-v1[1,:],v1[1,:])
         elif(self.param[3] == "Free!"):
             if(self.param[4] == "Brownian"):
                 #JV: We want to track the position of the brownian ball. If it goes through a wall, we will acknowledge it and save this into a variable that
@@ -227,6 +223,18 @@ class PhySystem:
             r1[0,:] = np.where(r1[0,:] < -0.5*L,r1[0,:]+1*L,r1[0,:])
             r1[1,:] = np.where(r1[1,:] > 0.5*L,r1[1,:]-1*L,r1[1,:])
             r1[1,:] = np.where(r1[1,:] < -0.5*L,r1[1,:]+1*L,r1[1,:])
+        elif(self.param[3] == "Walls"):
+            #JV: Border conditions, elastic collision with the limits of the simulations aswell as the elastic wall
+            #JV: First the limits of the simulation
+            v1[0,:] = np.where((r1[0,:]**2)+(self.R)**2 > (0.495*L)**2,-v1[0,:],v1[0,:])
+            v1[1,:] = np.where((r1[1,:]**2)+(self.R)**2 > (0.495*L)**2,-v1[1,:],v1[1,:])
+            #JV: Now the elastic wall
+            wallpos = self.param[7]
+            holesize = self.param[8]
+            wallwidth = self.param[9]
+            v1[0,:] = np.where(np.logical_and(np.logical_and(r1[0,:] + 1 > wallpos,r1[0,:] - 1 < wallpos),abs(r1[1,:]) > holesize/2),-v1[0,:],v1[0,:])
+#            v1[1,:] = np.where(np.logical_and(abs(r1[1,:]) + 1 > holesize/2,np.logical_and(r1[0,:] + 0.95 > wallpos, r1[0,:] - 0.95 < wallpos)),-v1[1,:],v1[1,:])
+
 
         return r1[0,:],r1[1,:],v1[0,:],v1[1,:],a1
 
@@ -237,7 +245,6 @@ class PhySystem:
         dist = r2.copy()
         N = self.particles.size
         L = self.param[2]
-
 
         close_list = []
 
@@ -316,10 +323,6 @@ class PhySystem:
 
         if((i*self.dt)%0.5== 0): #JV: every certain amount of steps we update the list
             self.close_list = self.close_particles_list(r2,self.Nlist) #JV: matrix that contains in every row the indexs of the m closest particles
-#            print(self.close_list)
-#            print(i*self.dt)
-#            print(r2)
-#            sys.exit()
 
         for j in range(0,N):
             dUx = 0
@@ -336,23 +339,23 @@ class PhySystem:
                 #If you want to include more forces you only need to add terms to these lines.
 
                 if(self.vel_verlet_on == True):
-                    if((r2[j,c] < 1.2*max(self.R[j],self.R[c])) and (r2[j,c] > 10**(-2))):
+                    if((r2[j,c] < 4*max(self.R[j],self.R[c])) and (r2[j,c] > 10**(-2))):
                         dUx = dUx + dLJverlet(dx[j,c],r2[j,c],self.R[j],self.R[c],self.param)
                         dUy = dUy + dLJverlet(dy[j,c],r2[j,c],self.R[j],self.R[c],self.param)
                 else:
-                    if((r2[j,c] < 1.2*max(self.R[j],self.R[c])) and (r2[j,c] > 10**(-2))):
+                    if((r2[j,c] < 4*max(self.R[j],self.R[c])) and (r2[j,c] > 10**(-2))):
                         dUx = dUx + dLJverlet(dx[j,c],r2[j,c],self.R[j],self.R[c],self.param) - dwalls([X[j],Y[j]],self.param)
                         dUy = dUy + dLJverlet(dy[j,c],r2[j,c],self.R[j],self.R[c],self.param) - dwalls([X[j],Y[j]],self.param)
 
                 #JV: We add the energy in the corresponding array in both cases, remember that the verlet algorithm will include the energy from the walls
                 # and that will be visible in fluctuations on the energy
                 if(self.vel_verlet_on == True):
-                    if((r2[j,c] < 1.2*max(self.R[j],self.R[c])) and (r2[j,c] > 10**(-2))):
+                    if((r2[j,c] < 2*max(self.R[j],self.R[c])) and (r2[j,c] > 10**(-2))):
                         u = np.append(u, LJverlet(r2[j,c],self.R[c],self.R[j],self.param))
                     else:
                         u = np.append(u, 0)
                 else:
-                    if((r2[j,c] < max(self.R[j],self.R[c])) and (r2[j,c] > 10**(-2))):
+                    if((r2[j,c] < 2*max(self.R[j],self.R[c])) and (r2[j,c] > 10**(-2))):
                         u = u + LJverlet(r2[j,c],self.R[c],self.R[j],self.param)
 
                         if((X[j]**2+Y[j]**2) > (0.8*L)**2):
@@ -364,7 +367,7 @@ class PhySystem:
 
             f[j,:] = f[j,:]+np.array([dUx,dUy])
 
-            #Now we check where this particle is in a RxR grid, that will help us to calcule the entropy.
+            #JV: Now we check where this particle is in a RxR grid, that will help us to calcule the entropy.
             if(self.param[4] == "Subsystems"):
                 if(j < self.param[5]**2): #JV: self.param[5] stores the number of n1xn1 type 1 particles
                     self.grid[int((X[j]+0.495*L) / (L/self.G)), int((Y[j]+0.495*L) / (L/self.G)),0] += 1
@@ -398,7 +401,7 @@ class PhySystem:
         progress = t/T*100
 
         #JV: Here we define the number of the GxG grid that we will need to calcule the entropy, change in order to change the precision of this grid
-        self.G = 4
+        self.G = 5
 
         if(self.param[4] == "Subsystems"): #JV: If we are on "Subsystems", we will count different the types of particles
             self.grid = np.zeros([self.G,self.G,2])
@@ -489,7 +492,7 @@ class PhySystem:
                             for k in range(self.G):
                                 for l in range(2):
                                     if (self.grid[j,k,0]+self.grid[j,k,1] != 0):
-                                        p0[counter] = float(self.grid[j,k,l])/(self.grid[j,k,0]+self.grid[j,k,1])
+                                        p0[counter] = float(self.grid[j,k,l])/update_entropy*(self.grid[j,k,0]+self.grid[j,k,1])
                                     else:
                                         p0[counter] = 0
                                     counter += 1
@@ -503,7 +506,7 @@ class PhySystem:
                     else:
                         for j in range(self.G):
                             for k in range(self.G):
-                                pji = float(self.grid[j,k])/(sumagrid)
+                                pji = float(self.grid[j,k])/(update_entropy*sumagrid)
                                 if(pji != 0):
                                     self.entropy_val  += pji*np.log(pji)
 
@@ -551,7 +554,6 @@ class PhySystem:
         #Once the computation has ended, I compute the kinetic energy,
         #the magnitude of the velocity V and the temperature
         #(see doc for temperature definition)
-        np.savetxt("test.txt",self.X[:,self.particles.size-1])
         self.KE()
         self.V = np.sqrt((self.VX**2 + self.VY**2))
         self.T = (np.sum(self.V**2,axis=1)/(self.particles.size*2 - 2))
@@ -561,6 +563,25 @@ class PhySystem:
         vs,a = np.meshgrid(np.linspace(0,self.V.max(),100),self.T)
         a,ts = np.meshgrid(np.linspace(0,self.V.max(),100),self.T)
         self.MB = (vs/(ts)*np.exp(-vs**2/(2*ts)))
+
+        #JV: If we are on the Subsystems submenu, we will calculate the temperature and the MB distribution of both types of particles
+        if(self.param[4] == "Subsystems"):
+
+            #JV: 1st group of particles
+            self.V1 = np.sqrt((self.VX[:,0:(self.param[5]**2)]**2 + self.VY[:,0:(self.param[5]**2)]**2))
+            self.T1 = (np.sum(self.V1**2,axis=1)/((self.param[5]**2)*2 - 2))
+
+            vs1,a1 = np.meshgrid(np.linspace(0,self.V1.max(),100),self.T1)
+            a1,ts1 = np.meshgrid(np.linspace(0,self.V1.max(),100),self.T1)
+            self.MB1 = (vs1/(ts1)*np.exp(-vs1**2/(2*ts1)))
+
+            #JV: 2nd group
+            self.V2 = np.sqrt((self.VX[:,(self.param[5]**2):self.particles.size]**2 + self.VY[:,(self.param[5]**2):self.particles.size]**2))
+            self.T2 = (np.sum(self.V2**2,axis=1)/((self.particles.size-self.param[5]**2)*2 - 2))
+
+            vs2,a2 = np.meshgrid(np.linspace(0,self.V2.max(),100),self.T2)
+            a2,ts2 = np.meshgrid(np.linspace(0,self.V2.max(),100),self.T2)
+            self.MB2 = (vs2/(ts2)*np.exp(-vs2**2/(2*ts2)))
 
         #Here I generate the accumulated V,T and MB using lists
         #The reason I use lists is because if you append
