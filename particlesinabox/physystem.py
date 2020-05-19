@@ -200,9 +200,9 @@ class PhySystem:
         L = self.param[2]
 
         if(self.param[3] == "In a box"):
-            #JV: Border conditions, elastic collision
-            v1[0,:] = np.where((r1[0,:]**2)+(self.R)**2 > (0.49*L)**2,-v1[0,:],v1[0,:])
-            v1[1,:] = np.where((r1[1,:]**2)+(self.R)**2 > (0.49*L)**2,-v1[1,:],v1[1,:])
+            #JV: Border conditions, elastic collision. (The "+1" is because 1 is the radius of the ball, in the reduced units that we calculate this part)
+            v1[0,:] = np.where((r1[0,:]**2)+(1)**2 > (0.49*L)**2,-v1[0,:],v1[0,:])
+            v1[1,:] = np.where((r1[1,:]**2)+(1)**2 > (0.49*L)**2,-v1[1,:],v1[1,:])
         elif(self.param[3] == "Free!"):
             if(self.param[4] == "Brownian"):
                 #JV: We want to track the position of the brownian ball. If it goes through a wall, we will acknowledge it and save this into a variable that
@@ -226,14 +226,14 @@ class PhySystem:
         elif(self.param[3] == "Walls"):
             #JV: Border conditions, elastic collision with the limits of the simulations aswell as the elastic wall
             #JV: First the limits of the simulation
-            v1[0,:] = np.where((r1[0,:]**2)+(self.R)**2 > (0.495*L)**2,-v1[0,:],v1[0,:])
-            v1[1,:] = np.where((r1[1,:]**2)+(self.R)**2 > (0.495*L)**2,-v1[1,:],v1[1,:])
+            v1[0,:] = np.where((r1[0,:]**2)+(1)**2 > (0.49*L)**2,-v1[0,:],v1[0,:])
+            v1[1,:] = np.where((r1[1,:]**2)+(1)**2 > (0.49*L)**2,-v1[1,:],v1[1,:])
             #JV: Now the elastic wall
             wallpos = self.param[7]
             holesize = self.param[8]
             wallwidth = self.param[9]
-            v1[0,:] = np.where(np.logical_and(np.logical_and(r1[0,:] + 1 > wallpos,r1[0,:] - 1 < wallpos),abs(r1[1,:]) > holesize/2),-v1[0,:],v1[0,:])
-#            v1[1,:] = np.where(np.logical_and(abs(r1[1,:]) + 1 > holesize/2,np.logical_and(r1[0,:] + 0.95 > wallpos, r1[0,:] - 0.95 < wallpos)),-v1[1,:],v1[1,:])
+            v1[0,:] = np.where(np.logical_and(np.logical_and(r1[0,:] + 1 > (wallpos-wallwidth/2),r1[0,:] - 1 < (wallpos+wallwidth/2)),abs(r1[1,:]) > holesize/2),-v1[0,:],v1[0,:])
+#            v1[1,:] = np.where(np.logical_and(abs(r1[1,:]) + 1 > holesize/2,np.logical_and(r1[0,:] + 1 > wallpos+wallwidth/2, r1[0,:] - 1 < wallpos+wallwidth/2)),-v1[1,:],v1[1,:])
 
 
         return r1[0,:],r1[1,:],v1[0,:],v1[1,:],a1
@@ -385,8 +385,6 @@ class PhySystem:
                     self.X2 = np.append(self.X2,(L*self.wallcount[0]+(X[N-1]))**2)
             self.entropy = np.append(self.entropy,self.entropy_val)
 
-#        print(self.grid)
-#        sys.exit()
         return f
 
     def solveverlet(self,T,dt):

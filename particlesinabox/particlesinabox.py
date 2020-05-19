@@ -105,6 +105,14 @@ the computation time will be shorter.
 
 """
 
+#This two lines set the icon of the application to an ub logo
+#JV: We then "config" the default window size
+#JV: We have to put these lines first in the code in order to work, why? "Kivy things my friend"
+from kivy.config import Config
+Config.set('kivy','window_icon','Icons/ub.png')
+Config.set('graphics', 'width', '1200')
+Config.set('graphics', 'height', '700')
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
@@ -130,10 +138,6 @@ import pickle #For saving
 import os # For saving too
 import time #To check computation time
 
-#This two lines should set the icon of the application to an ub logo
-#but only works rarely
-from kivy.config import Config
-Config.set('kivy','window_icon','ub.png')
 
 #JV: Definition of the save, the load and the advanced settings windows popups
 class savewindow(FloatLayout):
@@ -147,7 +151,6 @@ class loadwindow(FloatLayout):
 
 class settingswindow(FloatLayout):
     change_settings = ObjectProperty(None)
-    rbig_slider = ObjectProperty(None)
     cancel = ObjectProperty(None)
 
 
@@ -207,7 +210,7 @@ class main(BoxLayout):
     acucounter = 0
 
     #JV: To change the background color from the simulation canvas, check also the kivy file for more
-#    Window.clearcolor = (0.15, 0, 0.3, 1)
+    Window.clearcolor = (0, 0, 0, 1)
 
     def __init__(self, **kwargs):
         super(main, self).__init__(**kwargs)
@@ -242,7 +245,7 @@ class main(BoxLayout):
 
         self.wallpos = 0 #JV: We define the initial value of the position of the wall in the "Walls" menu
         self.holesize = 20 #JV: We define the initial value of the size of the hole (we need to change the kivy file if we change this value, go to the parameters of this slider and change the "value")
-        self.wallwidth = 4 #JV: We define the initial value of the width of the wall
+        self.wallwidth = 2 #JV: We define the initial value of the width of the wall
 
         #Initialization of the plots
         self.histbox.add_widget(self.histcanvas)
@@ -274,7 +277,7 @@ class main(BoxLayout):
         self.menu_list_str = ["In a box","Free!","Walls"] #JV: And a list with the names of each menu
 
         #JV: We make this so the simulation starts with one particle instead of 0, that could lead to some errors
-        self.add_particle_list()
+        self.add_particle_list(False)
 
     def update_pos(self,touch):
         """This function updates the position parameters
@@ -298,7 +301,7 @@ class main(BoxLayout):
             pass
         else:
             self.T = self.timeslider.value
-            self.add_particle_list()
+            self.add_particle_list(False)
 
         #JV: Conditions for "In a box" menu
         if(self.our_menu == self.menu_list_str[0]):
@@ -307,21 +310,21 @@ class main(BoxLayout):
                     pass
                 else:
                     self.n = self.nrslider.value
-                    self.add_particle_list()
+                    self.add_particle_list(False)
             elif(self.our_submenu == 'Subsystems'):
                 if(self.n1slider.value == self.n1 and self.n2slider.value == self.n2):
                       pass
                 else:
                       self.n1 = self.n1slider.value
                       self.n2 = self.n2slider.value
-                      self.add_particle_list()
+                      self.add_particle_list(False)
             elif(self.our_submenu == 'Brownian'):
                 if(self.nbigslider.value == self.nbig and self.nsmallslider.value == self.nsmall):
                     pass
                 else:
                     self.nbig = self.nbigslider.value
                     self.nsmall = self.nsmallslider.value
-                    self.add_particle_list()
+                    self.add_particle_list(False)
         #JV: Conditions for "Free!" menu
         elif(self.our_menu == self.menu_list_str[1]):
             if(self.our_submenu== 'Random Lattice'):
@@ -329,21 +332,21 @@ class main(BoxLayout):
                     pass
                 else:
                     self.n = self.nrslider2.value
-                    self.add_particle_list()
+                    self.add_particle_list(False)
             elif(self.our_submenu == 'Subsystems'):
                 if(self.n1slider2.value == self.n1 and self.n2slider2.value == self.n2):
                       pass
                 else:
                       self.n1 = self.n1slider2.value
                       self.n2 = self.n2slider2.value
-                      self.add_particle_list()
+                      self.add_particle_list(False)
             elif(self.our_submenu == 'Brownian'):
                 if(self.nbigslider2.value == self.nbig and self.nsmallslider2.value == self.nsmall):
                     pass
                 else:
                     self.nbig = self.nbigslider2.value
                     self.nsmall = self.nsmallslider2.value
-                    self.add_particle_list()
+                    self.add_particle_list(False)
         #JV: Conditions for "Walls" menu
         elif(self.our_menu == self.menu_list_str[2]):
             if(self.our_submenu == 'Random Lattice'):
@@ -351,33 +354,33 @@ class main(BoxLayout):
                     pass
                 else:
                     self.n = self.nrslider3.value
-                    self.add_particle_list()
+                    self.add_particle_list(False)
             elif(self.our_submenu == 'Subsystems'):
                 if(self.n1slider3.value == self.n1 and self.n2slider3.value == self.n2):
                       pass
                 else:
                       self.n1 = self.n1slider3.value
                       self.n2 = self.n2slider3.value
-                      self.add_particle_list()
+                      self.add_particle_list(False)
             elif(self.our_submenu == 'Brownian'):
                 if(self.nbigslider3.value == self.nbig and self.nsmallslider3.value == self.nsmall):
                     pass
                 else:
                     self.nbig = self.nbigslider3.value
                     self.nsmall = self.nsmallslider3.value
-                    self.add_particle_list()
+                    self.add_particle_list(False)
 
             if(self.wallslider.value == self.wallpos):
                 pass
             else:
                 self.wallpos = self.wallslider.value
-                self.add_particle_list()
+                self.add_particle_list(False)
 
             if(self.holeslider.value == self.holesize):
                 pass
             else:
                 self.holesize = self.holeslider.value
-                self.add_particle_list()
+                self.add_particle_list(False)
 
     def on_touch_Submenu(self):
         """JV: Similar to the previous function, this function is evaluated when the submenu buttons
@@ -396,7 +399,7 @@ class main(BoxLayout):
                     self.extraplotax.set_xlabel('t')
                     self.extraplotax.set_ylabel('Entropy')
                     self.extraplotcanvas.draw()
-                    self.add_particle_list()
+                    self.add_particle_list(False)
                 elif(self.menu_list[i].current_tab.text  == 'Subsystems' and not(self.our_submenu == 'Subsystems')):
                     self.stop()
                     self.our_submenu = 'Subsystems'
@@ -405,7 +408,7 @@ class main(BoxLayout):
                     self.extraplotax.set_xlabel('t')
                     self.extraplotax.set_ylabel('Entropy')
                     self.extraplotcanvas.draw()
-                    self.add_particle_list()
+                    self.add_particle_list(False)
                 elif(self.menu_list[i].current_tab.text  == 'Brownian' and not(self.our_submenu == 'Brownian')):
                     self.stop()
                     self.our_submenu = 'Brownian'
@@ -414,7 +417,7 @@ class main(BoxLayout):
                     self.extraplotax.set_ylabel(r'$\langle|x(t)-x(0)|^{2}\rangle$')
                     self.extraplotcanvas.draw()
                     self.extraplottab.text = "<|x(t)-x(0)|^2>"
-                    self.add_particle_list()
+                    self.add_particle_list(False)
                 else:
                     pass
 
@@ -426,22 +429,22 @@ class main(BoxLayout):
         if(self.menu.current_tab.text == 'In a box' and not(self.our_menu == 'In a box')):
             self.stop()
             self.our_menu = 'In a box'
-            self.add_particle_list()
+            self.add_particle_list(False)
         elif(self.menu.current_tab.text == 'Free!' and not(self.our_menu == 'Free!')):
             self.stop()
             self.our_menu = 'Free!'
-            self.add_particle_list()
+            self.add_particle_list(False)
         elif(self.menu.current_tab.text == 'Walls' and not(self.our_menu == 'Walls')):
             self.stop()
             self.our_menu = 'Walls'
-            self.add_particle_list()
+            self.add_particle_list(False)
         else:
             pass
 
         #JV: Now we update the submenu so we go to the submenu that we were previously, not the same that we were but in a different menu
         self.on_touch_Submenu()
 
-    def add_particle_list(self):
+    def add_particle_list(self,inversion):
 
         self.stop() #I stop the simultion to avoid crashes
 
@@ -456,35 +459,50 @@ class main(BoxLayout):
             elif(self.our_menu == "Walls"):
                 self.n = int(self.nrslider3.value)
 
-            if(self.our_menu == "Walls"):
-                x,y = np.linspace(-self.L/2*0.9,self.wallpos-self.L*0.05,self.n),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n)
+            if(inversion == False):
+                self.inversion = False
+                if(self.our_menu == "Walls"):
+                    x,y = np.linspace(-self.L/2*0.9,self.wallpos-self.L*0.05,self.n),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n)
+                else:
+                    x,y = np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n)
+
+                temp = 3.
+                theta = np.random.ranf(self.n**2)*2*np.pi
+                vx,vy = 0.5*np.cos(theta),0.5*np.sin(theta)
+
+                vcm = np.array([np.sum(vx),np.sum(vy)])/self.n**2
+                kin = np.sum(vx**2+vy**2)/(self.n**2)
+
+                if(self.n == 1): #JV: To avoid problems, if we only have one particle it will not obey that the velocity of the center of mass is 0
+                    vx = vx*np.sqrt(2*temp/kin)
+                    vy = vy*np.sqrt(2*temp/kin)
+                else:
+                    vx = (vx-vcm[0])*np.sqrt(2*temp/kin)
+                    vy = (vy-vcm[1])*np.sqrt(2*temp/kin)
+
             else:
-                x,y = np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n)
-            vmax = 10
-            temp = 2.5
+                self.inversion = True
+                i = int(self.T/self.dt)
 
-            temp = 3.
-            theta = np.random.ranf(self.n**2)*2*np.pi
-            vx,vy = 0.5*np.cos(theta),0.5*np.sin(theta)
+                x = self.s.X[i,:]*self.R
+                y = self.s.Y[i,:]*self.R
+                vx = -self.s.VX[i,:]
+                vy = -self.s.VY[i,:]
 
-            vcm = np.array([np.sum(vx),np.sum(vy)])/self.n**2
-            kin = np.sum(vx**2+vy**2)/(self.n**2)
-
-            if(self.n == 1): #JV: To avoid problems, if we only have one particle it will not obey that the velocity of the center of mass is 0
-                vx = vx*np.sqrt(2*temp/kin)
-                vy = vy*np.sqrt(2*temp/kin)
-            else:
-                vx = (vx-vcm[0])*np.sqrt(2*temp/kin)
-                vy = (vy-vcm[1])*np.sqrt(2*temp/kin)
             k = 0
             for i in range(0,self.n):
                 for j in range(0,self.n):
                     #JV: In "particles" we have the positions and velocities in reduced units (the velocities are already transformed,
                     # but for the positions we need to include the scale factor)
-                    self.particles = np.append(self.particles,particle(self.mass,self.charge,self.R/self.R,np.array([x[i],y[j]])/self.R,np.array([vx[k],vy[k]]),2))
+                    if(inversion == False):
+                        self.particles = np.append(self.particles,particle(self.mass,self.charge,self.R/self.R,np.array([x[i],y[j]])/self.R,np.array([vx[k],vy[k]]),2))
 
-                    #JV: In this new array we will have the positions and velocities in the physical units (Angstrom,...)
-                    self.previewlist.append([x[i],y[j],vx[k]*self.R,vy[k]*self.R])
+                        #JV: In this new array we will have the positions and velocities in the physical units (Angstrom,...)
+                        self.previewlist.append([x[i],y[j],vx[k]*self.R,vy[k]*self.R])
+                    else:
+                        self.particles = np.append(self.particles,particle(self.mass,self.charge,self.R/self.R,np.array([x[k],y[k]])/self.R,np.array([vx[k],vy[k]]),2))
+                        self.previewlist.append([x[k],y[k],vx[k]*self.R,vy[k]*self.R])
+
                     k += 1
 
         elif(self.our_submenu == 'Subsystems'):
@@ -495,56 +513,76 @@ class main(BoxLayout):
                 self.n1 = int(self.n1slider2.value)
                 self.n2 = int(self.n2slider2.value)
 
-            if(self.our_menu == "Walls"):
-                x1,y1 = np.linspace(-self.L/2*0.9,self.wallpos-self.L*0.05,self.n1),np.linspace(self.L/2*0.9,self.L/2*0.1,self.n1)
-                x2,y2 = np.linspace(-self.L/2*0.9,self.wallpos-self.L*0.05,self.n2),np.linspace(-self.L/2*0.9,-self.L/2*0.1,self.n2)
+            if(inversion == False):
+                self.inversion = False
+                if(self.our_menu == "Walls"):
+                    x1,y1 = np.linspace(-self.L/2*0.9,self.wallpos-self.L*0.05,self.n1),np.linspace(self.L/2*0.9,self.L/2*0.1,self.n1)
+                    x2,y2 = np.linspace(-self.L/2*0.9,self.wallpos-self.L*0.05,self.n2),np.linspace(-self.L/2*0.9,-self.L/2*0.1,self.n2)
+                else:
+                    x1,y1 = np.linspace(-self.L/2*0.9,-self.L/2*0.1,self.n1),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n1)
+                    x2,y2 = np.linspace(self.L/2*0.1,self.L/2*0.9,self.n2),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n2)
+
+                temp1 = 1
+                theta1 = np.random.ranf(self.n1**2)*2*np.pi
+                vx1,vy1 = 0.5*np.cos(theta1),0.5*np.sin(theta1)
+                vcm1 = np.array([np.sum(vx1),np.sum(vy1)])/self.n1**2
+                kin1 = np.sum(vx1**2+vy1**2)/(self.n1**2)
+
+                if(self.n1 == 1): #JV: As previous, if there's only one particle his cm velocity will not be 0
+                    vx1 = vx1*np.sqrt(2*temp1/kin1)
+                    vy1 = vy1*np.sqrt(2*temp1/kin1)
+                else:
+                    vx1 = (vx1-vcm1[0])*np.sqrt(2*temp1/kin1)
+                    vy1 = (vy1-vcm1[1])*np.sqrt(2*temp1/kin1)
+
+                temp2 = 3
+                theta2 = np.random.ranf(self.n2**2)*2*np.pi
+                vx2,vy2 = 0.5*np.cos(theta2),0.5*np.sin(theta2)
+                vcm2 = np.array([np.sum(vx2),np.sum(vy2)])/self.n2**2
+                kin2 = np.sum(vx2**2+vy2**2)/(self.n2**2)
+
+                if(self.n2 == 1):
+                    vx2 = vx2*np.sqrt(2*temp2/kin2)
+                    vy2 = vy2*np.sqrt(2*temp2/kin2)
+                else:
+                    vx2 = (vx2-vcm2[0])*np.sqrt(2*temp2/kin2)
+                    vy2 = (vy2-vcm2[1])*np.sqrt(2*temp2/kin2)
+
             else:
-                x1,y1 = np.linspace(-self.L/2*0.9,-self.L/2*0.1,self.n1),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n1)
-                x2,y2 = np.linspace(self.L/2*0.1,self.L/2*0.9,self.n2),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n2)
+                self.inversion = True
+                i = int(self.T/self.dt)
 
-            temp1 = 1
-            theta1 = np.random.ranf(self.n1**2)*2*np.pi
-            vx1,vy1 = 0.5*np.cos(theta1),0.5*np.sin(theta1)
-            vcm1 = np.array([np.sum(vx1),np.sum(vy1)])/self.n1**2
-            kin1 = np.sum(vx1**2+vy1**2)/(self.n1**2)
-
-            if(self.n1 == 1): #JV: As previous, if there's only one particle his cm velocity will not be 0
-                vx1 = vx1*np.sqrt(2*temp1/kin1)
-                vy1 = vy1*np.sqrt(2*temp1/kin1)
-            else:
-                vx1 = (vx1-vcm1[0])*np.sqrt(2*temp1/kin1)
-                vy1 = (vy1-vcm1[1])*np.sqrt(2*temp1/kin1)
-
-            temp2 = 3
-            theta2 = np.random.ranf(self.n2**2)*2*np.pi
-            vx2,vy2 = 0.5*np.cos(theta2),0.5*np.sin(theta2)
-            vcm2 = np.array([np.sum(vx2),np.sum(vy2)])/self.n2**2
-            kin2 = np.sum(vx2**2+vy2**2)/(self.n2**2)
-
-            if(self.n2 == 1):
-                vx2 = vx2*np.sqrt(2*temp2/kin2)
-                vy2 = vy2*np.sqrt(2*temp2/kin2)
-            else:
-                vx2 = (vx2-vcm2[0])*np.sqrt(2*temp2/kin2)
-                vy2 = (vy2-vcm2[1])*np.sqrt(2*temp2/kin2)
+                x = self.s.X[i,:]*self.R
+                y = self.s.Y[i,:]*self.R
+                vx = -self.s.VX[i,:]
+                vy = -self.s.VY[i,:]
 
             k = 0
             for i in range(0,self.n1):
                 for j in range(0,self.n1):
-                    #JV: In "particles" we have the positions and velocities in kivy units (the velocities are already transformed,
-                    # but for the positions we need to include the scale factor)
-                    self.particles = np.append(self.particles,particle(self.mass,self.charge,self.R/self.R,np.array([x1[i],y1[j]])/self.R,np.array([vx1[k],vy1[k]]),2))
+                    if(inversion == False):
+                        #JV: In "particles" we have the positions and velocities in kivy units (the velocities are already transformed,
+                        # but for the positions we need to include the scale factor)
+                        self.particles = np.append(self.particles,particle(self.mass,self.charge,self.R/self.R,np.array([x1[i],y1[j]])/self.R,np.array([vx1[k],vy1[k]]),2))
 
-                    #JV: In this new array we will have the positions and velocities in the physical units (Angstrom,...)
-                    self.previewlist.append([x1[i],y1[j],vx1[k]*self.R,vy1[k]*self.R])
+                        #JV: In this new array we will have the positions and velocities in the physical units (Angstrom,...)
+                        self.previewlist.append([x1[i],y1[j],vx1[k]*self.R,vy1[k]*self.R])
+                    else:
+                        self.particles = np.append(self.particles,particle(self.mass,self.charge,self.R/self.R,np.array([x[k],y[k]])/self.R,np.array([vx[k],vy[k]]),2))
+                        self.previewlist.append([x[k],y[k],vx[k]*self.R,vy[k]*self.R])
+
                     k += 1
 
             k = 0
             for i in range(0,self.n2):
                 for j in range(0,self.n2):
-                    self.particles = np.append(self.particles,particle(self.mass,self.charge,self.R/self.R,np.array([x2[i],y2[j]])/self.R,np.array([vx2[k],vy2[k]]),2))
+                    if(inversion == False):
+                        self.particles = np.append(self.particles,particle(self.mass,self.charge,self.R/self.R,np.array([x2[i],y2[j]])/self.R,np.array([vx2[k],vy2[k]]),2))
+                        self.previewlist.append([x2[i],y2[j],vx2[k]*self.R,vy2[k]*self.R])
+                    else:
+                        self.particles = np.append(self.particles,particle(self.mass,self.charge,self.R/self.R,np.array([x[k+self.n1**2],y[k+self.n1**2]])/self.R,np.array([vx[k+self.n1**2],vy[k+self.n1**2]]),2))
+                        self.previewlist.append([x[k+self.n1**2],y[k+self.n1**2],vx[k+self.n1**2]*self.R,vy[k+self.n1**2]*self.R])
 
-                    self.previewlist.append([x2[i],y2[j],vx2[k]*self.R,vy2[k]*self.R])
                     k += 1
 
         elif(self.our_submenu == 'Brownian'):
@@ -555,47 +593,66 @@ class main(BoxLayout):
                 self.nbig = int(self.nbigslider2.value)
                 self.nsmall = int(self.nsmallslider2.value)
 
-            #JV: corresponding to the small particles variables
-            if(self.our_menu == "Walls"):
-                x,y = np.linspace(-self.L/2*0.9,self.wallpos-self.L*0.05,self.nsmall),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.nsmall)
+            if(inversion == False):
+                self.inversion = False
+                #JV: corresponding to the small particles variables
+                if(self.our_menu == "Walls"):
+                    x,y = np.linspace(-self.L/2*0.9,self.wallpos-self.L*0.05,self.nsmall),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.nsmall)
+                else:
+                    x,y = np.linspace(-self.L/2*0.9,self.L/2*0.9,self.nsmall),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.nsmall)
+
+                temp = 4.
+                theta = np.random.ranf(self.nsmall**2)*2*np.pi
+                vx,vy = 0.5*np.cos(theta),0.5*np.sin(theta)
+
+                vcm = np.array([np.sum(vx),np.sum(vy)])/self.nsmall**2
+                kin = np.sum(vx**2+vy**2)/(self.nsmall**2)
+
+                vx = (vx-vcm[0])*np.sqrt(2*temp/kin)
+                vy = (vy-vcm[1])*np.sqrt(2*temp/kin)
+
+                #JV: now for the big particle(s):
+                if(self.our_menu == "Walls"):
+                    xbig,ybig = (-(self.L/2-self.wallpos)/2,0)
+                else:
+                    xbig,ybig = (0,0)
+
+                vxbig,vybig = (0,0)
+
             else:
-                x,y = np.linspace(-self.L/2*0.9,self.L/2*0.9,self.nsmall),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.nsmall)
+                self.inversion = True
+                i = int(self.T/self.dt)
 
-            vmax = 10
-            temp = 2.5
+                x = self.s.X[i,:]*self.R
+                y = self.s.Y[i,:]*self.R
+                vx = -self.s.VX[i,:]
+                vy = -self.s.VY[i,:]
 
-            temp = 5.
-            theta = np.random.ranf(self.nsmall**2)*2*np.pi
-            vx,vy = 0.5*np.cos(theta),0.5*np.sin(theta)
-
-            vcm = np.array([np.sum(vx),np.sum(vy)])/self.nsmall**2
-            kin = np.sum(vx**2+vy**2)/(self.nsmall**2)
-
-            vx = (vx-vcm[0])*np.sqrt(2*temp/kin)
-            vy = (vy-vcm[1])*np.sqrt(2*temp/kin)
-
-            #JV: now for the big particle(s):
-            if(self.our_menu == "Walls"):
-                xbig,ybig = (-(self.L/2-self.wallpos)/2,0)
-            else:
-                xbig,ybig = (0,0)
-
-            vxbig,vybig = (0,0)
 
             k = 0
             for i in range(0,self.nsmall):
                 for j in range(0,self.nsmall):
-                    self.particles = np.append(self.particles,particle(self.mass,self.charge,self.R/self.R,np.array([x[i],y[j]])/self.R,np.array([vx[k],vy[k]]),2))
+                    if(inversion == False):
+                        self.particles = np.append(self.particles,particle(self.mass,self.charge,self.R/self.R,np.array([x[i],y[j]])/self.R,np.array([vx[k],vy[k]]),2))
+                        self.previewlist.append([x[i],y[j],vx[k]*self.R,vy[k]*self.R])
+                    else:
+                        self.particles = np.append(self.particles,particle(self.mass,self.charge,self.R/self.R,np.array([x[k],y[k]])/self.R,np.array([vx[k],vy[k]]),2))
+                        self.previewlist.append([x[k],y[k],vx[k]*self.R,vy[k]*self.R])
 
-                    self.previewlist.append([x[i],y[j],vx[k]*self.R,vy[k]*self.R])
                     k += 1
 
+            k = 0
             for i in range(0, self.nbig):
                 for j in range(0,self.nbig):
-                    #JV: Because we want the supose that all the particles have the same density, and we are on a 2D field, we include the (self.Rbig/self.R)**2 factor on the mass
-                    self.particles = np.append(self.particles,particle(self.mass*((self.Rbig/self.R)**2),self.charge,self.Rbig/self.R,np.array([xbig,ybig])/self.R,np.array([vxbig,vybig]),2))
+                    if(inversion == False):
+                        #JV: Because we want the supose that all the particles have the same density, and we are on a 2D field, we include the (self.Rbig/self.R)**2 factor on the mass
+                        self.particles = np.append(self.particles,particle(self.mass*((self.Rbig/self.R)**2),self.charge,self.Rbig/self.R,np.array([xbig,ybig])/self.R,np.array([vxbig,vybig]),2))
+                        self.previewlist.append([xbig,ybig,vxbig*self.R,vybig*self.R])
+                    else:
+                        self.particles = np.append(self.particles,particle(self.mass*((self.Rbig/self.R)**2),self.charge,self.Rbig/self.R,np.array([x[k+self.nsmall**2],y[k+self.nsmall**2]])/self.R,np.array([vx[k+self.nsmall**2],vy[k+self.nsmall**2]]),2))
+                        self.previewlist.append([x[k+self.nsmall**2],y[k+self.nsmall**2],vx[k+self.nsmall**2]*self.R,vy[k+self.nsmall**2]*self.R])
 
-                    self.previewlist.append([xbig,ybig,vxbig*self.R,vybig*self.R])
+                    k += 1
 
         #This block of code is present at different points in the program
         #It updates the ready flag and changes the icons for compute/play button and the status label.
@@ -622,7 +679,7 @@ class main(BoxLayout):
 
         elif(self.ready==True):
             if(self.running==False):
-                self.timer = Clock.schedule_interval(self.animate,0.04)
+                self.timer = Clock.schedule_interval(self.animate,0.05)
                 self.running = True
                 self.paused = False
             elif(self.running==True):
@@ -711,11 +768,18 @@ class main(BoxLayout):
         content = settingswindow(change_settings = self.change_settings, cancel = self.dismiss_popup)
         self._popup = Popup(title='Advanced Settings', content = content, size_hint = (1,1))
         self._popup.content.rbig_slider.value = int(self.Rbig/self.R)
+        self._popup.content.boxlength_slider.value = self.L
+        self._popup.content.dt_slider.value = self.dt
         self._popup.open()
 
     def change_settings(self):
-        self.Rbig = self._popup.content.rbig_slider.value * self.R
-        self.add_particle_list()
+        if(self._popup.content.rbig_slider.value != self.Rbig or self._popup.content.boxlength_slider.value != self.L or self._popup.content.dt_slider.value != self.dt):
+            self.Rbig = self._popup.content.rbig_slider.value * self.R
+            self.L = self._popup.content.boxlength_slider.value
+            self.dt = self._popup.content.dt_slider.value
+            self.add_particle_list(False)
+        else:
+            pass
 
     def load(self,path,name,demo=False):
         self.stop()
@@ -818,11 +882,6 @@ class main(BoxLayout):
         print("")
         print('Loaded simulation {} with computation'.format(name))
 
-#        print("")
-#        print(self.submenu_list[0].state,self.submenu_list[1].state,self.submenu_list[2].state)
-#        print(self.partmenu.current_tab.text)
-#        print("")
-
         last = len(self.s.U)-1 #JV: This variable stores the index of the last variable in this arrays, so we can access it easier
         print("Initial energy: ",self.s.K[0]+self.s.U[0],"Final energy: ",self.s.U[last]+self.s.K[last])
         print("Relative increment of energy: ", (abs((self.s.K[0]+self.s.U[0])-(self.s.U[last]+self.s.K[last]))/(self.s.K[0]+self.s.U[0]))*100,"%")
@@ -863,11 +922,19 @@ class main(BoxLayout):
 
 
     def timeinversion(self):
-#        TO FIX
-        """This function comes from the other program and is linked to the time inversion button.
-        Right now the button won't do anything because I have emptied this function. If you delete this
-        Function the program will crash if you press the buttons. If you ask why I haven't deleted
-        the button is because it would mess up the aspect ratio of the icons"""
+        """JV: This funcion is the one responsible of calling the others functions when we want to make
+        the time inversions, allowing us to compute the path of the particles when inverting its velocity,
+        so we can see if the particles reach the first initial state. We change the time of computation so
+        it reaches to the initial positions and then it stops."""
+
+        #JV: We have this condition so you are only able to compute this time inversion if you haven't done it before (in this simulation)
+        # Doing this we make sure the user doesn't enter in a loop of time inversions that are not what we want ( :) )
+        if(self.inversion == False):
+            self.T = self.time
+            self.stop()
+            self.timeslider.value = self.T
+
+            self.add_particle_list(True)
         pass
 
 
@@ -969,19 +1036,9 @@ class main(BoxLayout):
                     self.plotbox.canvas.remove(self.obj)
 
                     #JV: We need to multiply by scale to transform from Angstrom units to Kivy units, that ajust depending on the resulution
-                    self.point1.clear()
-                    self.point2.clear()
-                    self.point1.append(w/2+self.wallpos*scale)
-                    self.point1.append(h)
-                    self.point1.append(w/2+self.wallpos*scale)
-                    self.point1.append(h/2 + self.holesize*scale/2)
-                    self.point2.append(w/2+self.wallpos*scale)
-                    self.point2.append(h/2 - self.holesize*scale/2)
-                    self.point2.append(w/2+self.wallpos*scale)
-                    self.point2.append(0)
                     self.obj.add(Color(0.37,0.01,0.95))
-                    self.obj.add(Line(points = self.point1, width = self.wallwidth))
-                    self.obj.add(Line(points = self.point2, width = self.wallwidth))
+                    self.obj.add(Rectangle(pos=(w/2+self.wallpos*scale-self.wallwidth*scale/2,0), size = (self.wallwidth*scale,h/2 - self.holesize*scale/2)))
+                    self.obj.add(Rectangle(pos=(w/2+self.wallpos*scale-self.wallwidth*scale/2,h/2+self.holesize*scale/2), size = (self.wallwidth*scale,h/2 - self.holesize*scale/2)))
                     self.plotbox.canvas.add(self.obj)
 
 
@@ -1201,13 +1258,15 @@ class main(BoxLayout):
 
                         Color(0.43,0.96,0.16)
                         Ellipse(pos=((self.s.X[i,j])*scale*self.R+w/2.-self.Rbig*scale/2.,(self.s.Y[i,j])*scale*self.R+h/2.-self.Rbig*scale/2.),size=(self.Rbig*scale,self.Rbig*scale))
-                        if(abs(self.s.X[i,j]-self.s.X[i-1,j]) < 0.3*self.L and abs(self.s.Y[i,j]-self.s.Y[i-1,j]) < 0.3*self.L):
+                        #JV: These lines inside the condition make the trace of the big particle. We will only draw it if we are not in the "timeinversion" mode
+                        if(self.inversion == False):
+                            #if(abs(self.s.X[i,j]-self.s.X[i-1,j]) < 0.3*self.L and abs(self.s.Y[i,j]-self.s.Y[i-1,j]) < 0.3*self.L):
                             self.plotbox.canvas.add(self.obj2)
 #                            self.points.append((self.s.X[i,j])*scale*self.R+w/2.)
 #                            self.points.append((self.s.Y[i,j])*scale*self.R+h/2.)
                             self.obj2.add(Color(0.43,0.96,0.16))
                             self.obj2.add(Ellipse(pos=((self.s.X[i,j])*scale*self.R+w/2.,(self.s.Y[i,j])*scale*self.R+h/2.),size=(self.Rbig*scale/10,self.Rbig*scale/10)))
-#                        print(self.s.Y[i,j]-self.s.Y[i-1,j], self.L/self.R)
+    #                        print(self.s.Y[i,j]-self.s.Y[i-1,j], self.L/self.R)
 
 
             self.time += interval*self.speed #Here is where speed accelerates animation
@@ -1294,23 +1353,43 @@ class main(BoxLayout):
             self.plotbox.canvas.remove(self.obj)
 
             #JV: We need to multiply by scale to transform from Angstrom units to Kivy units, that ajust depending on the resulution
-            self.point1.clear()
-            self.point2.clear()
-            self.point1.append(w/2+self.wallpos*scale)
-            self.point1.append(h)
-            self.point1.append(w/2+self.wallpos*scale)
-            self.point1.append(h/2 + self.holesize*scale/2)
-            self.point2.append(w/2+self.wallpos*scale)
-            self.point2.append(h/2 - self.holesize*scale/2)
-            self.point2.append(w/2+self.wallpos*scale)
-            self.point2.append(0)
             self.obj.add(Color(0.37,0.01,0.95))
-            self.obj.add(Line(points = self.point1, width = self.wallwidth))
-            self.obj.add(Line(points = self.point2, width = self.wallwidth))
+            self.obj.add(Rectangle(pos=(w/2+self.wallpos*scale-self.wallwidth*scale/2,0), size = (self.wallwidth*scale,h/2 - self.holesize*scale/2)))
+            self.obj.add(Rectangle(pos=(w/2+self.wallpos*scale-self.wallwidth*scale/2,h/2+self.holesize*scale/2), size = (self.wallwidth*scale,h/2 - self.holesize*scale/2)))
             self.plotbox.canvas.add(self.obj)
 
         #JV: Check if the animations has arrived at the end of the performance, if it has, it will stop
         if(i >= n):
+            if(self.inversion == True):
+                self.previewlist = []
+                if(self.our_submenu == "Random Lattice"):
+                    x = self.s.X[i,:]*self.R
+                    y = self.s.Y[i,:]*self.R
+                    vx = -self.s.VX[i,:]
+                    vy = -self.s.VY[i,:]
+
+
+                    for k in range(0,self.n**2):
+                        self.previewlist.append([x[k],y[k],vx[k]*self.R,vy[k]*self.R])
+
+                elif(self.our_submenu == "Subsystems"):
+                    x = self.s.X[i,:]*self.R
+                    y = self.s.Y[i,:]*self.R
+                    vx = -self.s.VX[i,:]
+                    vy = -self.s.VY[i,:]
+
+                    for k in range(0,self.n1**2+self.n2**2):
+                        self.previewlist.append([x[k],y[k],vx[k]*self.R,vy[k]*self.R])
+
+                elif(self.our_submenu == "Brownian"):
+                    x = self.s.X[i,:]*self.R
+                    y = self.s.Y[i,:]*self.R
+                    vx = -self.s.VX[i,:]
+                    vy = -self.s.VY[i,:]
+
+                    for k in range(0,self.nsmall**2+self.nbig**2):
+                        self.previewlist.append([x[k],y[k],vx[k]*self.R,vy[k]*self.R])
+
             self.stop()
 
 

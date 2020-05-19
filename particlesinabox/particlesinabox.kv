@@ -114,9 +114,19 @@
 			orientation: 'horizontal'
 			Label:
 				text: 'Status:'
+				canvas.before:
+					Rectangle:
+						pos: self.pos
+						size: self.size
+						source: "Icons/black.png"
 			Label:
 				id: status_label
 				text: 'Ready'
+				canvas.before:
+					Rectangle:
+						pos: self.pos
+						size: self.size
+						source: "Icons/black.png"
 			Button:
 				#text: 'Save'
 				background_normal: 'Icons/save.png'
@@ -132,12 +142,27 @@
 			orientation: 'horizontal'
 			Label:
 				text: 'Computation Time:'
+				canvas.before:
+					Rectangle:
+						pos: self.pos
+						size: self.size
+						source: "Icons/black.png"
 				size_hint: (0.4, 1)
 			Label:
 				text: str(round(time_slider.value,2))
+				canvas.before:
+					Rectangle:
+						pos: self.pos
+						size: self.size
+						source: "Icons/black.png"
 				size_hint: (0.1, 1)
 			Slider:
 				id: time_slider
+				canvas.before:
+					Rectangle:
+						pos: self.pos
+						size: self.size
+						source: "Icons/black.png"
 				size_hint: (1, 1)
 				min: 10
 				max: 300
@@ -145,28 +170,46 @@
 				on_touch_up: root.on_touch_Slider()
 		ProgressBar:
 			id: progress_bar
+			canvas.before:
+				Rectangle:
+					pos: self.pos
+					size: self.size
+					source: "Icons/black.png"
 			max: 100
 			size_hint: (1, 0.01)
 		BoxLayout:
 			size_hint: (1, 0.5)
+
+			orientation: 'horizontal'
+			canvas.before:
+				Color:
+					rgb: 0/255.0, 0/255.0, 0/255.0
+				Rectangle:
+					pos: self.pos
+					size: self.size
 			TabbedPanel:
 				id: plot_menu
 				do_default_tab: False
+				tab_width: 125
 				background_image: 'Icons/black.png'
 				TabbedPanelItem:
 					text: 'Energy'
+					background_down: 'Icons/blue.png'
 					BoxLayout:
 						id: enplot_box
 				TabbedPanelItem:
 					text: 'Momentum'
+					background_down: 'Icons/blue.png'
 					BoxLayout:
 						id: hist_box
 				TabbedPanelItem:
 					text: 'Acu'
+					background_down: 'Icons/blue.png'
 					BoxLayout:
 						id: acuhist_box
 				TabbedPanelItem:
 					text: 'Entropy'
+					background_down: 'Icons/blue.png'
 					id: extraplot_tab
 					BoxLayout:
 						id: extraplot_box
@@ -174,9 +217,16 @@
 			id: menu
 			size_hint: (1, 0.5)
 			do_default_tab: False
-			background_image: 'Icons/black.png'
+			tab_width: 100
+			canvas.before:
+				Color:
+					rgb: 0/255.0, 0/255.0, 0/255.0
+				Rectangle:
+					pos: self.pos
+					size: self.size
 			TabbedPanelItem:
 				text: 'In a box'
+				background_down: 'Icons/blue.png'
 				id: inabox_tab
 				on_touch_up: root.on_touch_Menu()
 				BoxLayout:
@@ -187,20 +237,13 @@
 						size_hint: (1, 0.5)
 						BoxLayout:
 							orientation: 'vertical'
-							size_hint: (0.1, 1)
-							Button:
-								#text: 'Add'
-								background_normal: 'Icons/add.png'
-								background_down: 'Icons/addb.png'
-								on_press: root.on_touch_Slider()
-							Button:
-								#text: 'Reset'
-								background_normal: 'Icons/clear.png'
-								background_down: 'Icons/clearb.png'
-								on_press: root.reset_particle_list()
-						BoxLayout:
-							orientation: 'vertical'
 							size_hint: (1, 1)
+							canvas.before:
+								Color:
+									rgb: 0/255.0, 0/255.0, 0/255.0
+								Rectangle:
+									pos: self.pos
+									size: self.size
 							BoxLayout:
 								orientation: 'horizontal'
 								size_hint: (1, 0.1)
@@ -233,19 +276,31 @@
 									min: -100
 									max: 100
 									step: 1
-
 					TabbedPanel:
 						id: inabox_menu
 						size_hint: (1, 1)
 						do_default_tab: False
-						background_image: 'Icons/black.png'
+						canvas.before:
+							Color:
+								rgb: 0/255.0, 0/255.0, 0/255.0
+							Rectangle:
+								pos: self.pos
+								size: self.size
+						tab_width: 115
 						TabbedPanelItem:
 							text: 'Random Lattice'
+							background_down: 'Icons/blue.png'
 							id: rl_tab
 							on_touch_up: root.on_touch_Submenu()
 							BoxLayout:
 								orientation: 'vertical'
 								size_hint: (1, 1)
+								canvas.before:
+									Color:
+										rgb: 0/255.0, 0/255.0, 0/255.0
+									Rectangle:
+										pos: self.pos
+										size: self.size
 								BoxLayout:
 									orientation: 'horizontal'
 									Label:
@@ -265,10 +320,17 @@
 						TabbedPanelItem:
 							text: 'Subsystems'
 							id: sbs_tab
+							background_down: 'Icons/blue.png'
 							on_touch_up: root.on_touch_Submenu()
 							BoxLayout:
 								orientation: 'vertical'
 								size_hint: (1, 1)
+								canvas.before:
+									Color:
+										rgb: 0/255.0, 0/255.0, 0/255.0
+									Rectangle:
+										pos: self.pos
+										size: self.size
 								BoxLayout:
 									orientation: 'horizontal'
 									Label:
@@ -304,10 +366,17 @@
 						TabbedPanelItem:
 							text: 'Brownian'
 							id: brw_tab
+							background_down: 'Icons/blue.png'
 							on_touch_up: root.on_touch_Submenu()
 							BoxLayout:
 								orientation: 'vertical'
 								size_hint: (1, 1)
+								canvas.before:
+									Color:
+										rgb: 0/255.0, 0/255.0, 0/255.0
+									Rectangle:
+										pos: self.pos
+										size: self.size
 								BoxLayout:
 									orientation: 'horizontal'
 									Label:
@@ -343,26 +412,20 @@
 			TabbedPanelItem:
 				text: 'Free!'
 				id: free_tab
+				background_down: 'Icons/blue.png'
 				on_touch_up: root.on_touch_Menu()
 				BoxLayout:
 					size_hint: (1, 1)
 					orientation: 'vertical'
+					canvas.before:
+						Color:
+							rgb: 0/255.0, 0/255.0, 0/255.0
+						Rectangle:
+							pos: self.pos
+							size: self.size
 					BoxLayout:
 						orientation: 'horizontal'
 						size_hint: (1, 0.5)
-						BoxLayout:
-							orientation: 'vertical'
-							size_hint: (0.1, 1)
-							Button:
-								#text: 'Add'
-								background_normal: 'Icons/add.png'
-								background_down: 'Icons/addb.png'
-								on_press: root.on_touch_Slider()
-							Button:
-								#text: 'Reset'
-								background_normal: 'Icons/clear.png'
-								background_down: 'Icons/clearb.png'
-								on_press: root.reset_particle_list()
 						BoxLayout:
 							orientation: 'vertical'
 							size_hint: (1, 1)
@@ -403,8 +466,10 @@
 						size_hint: (1, 1)
 						do_default_tab: False
 						background_image: 'Icons/black.png'
+						tab_width: 115
 						TabbedPanelItem:
 							text: 'Random Lattice'
+							background_down: 'Icons/blue.png'
 							id: rl_tab2
 							on_touch_up: root.on_touch_Submenu()
 							BoxLayout:
@@ -429,6 +494,7 @@
 						TabbedPanelItem:
 							text: 'Subsystems'
 							id: sbs_tab2
+							background_down: 'Icons/blue.png'
 							on_touch_up: root.on_touch_Slider()
 							BoxLayout:
 								orientation: 'vertical'
@@ -468,6 +534,7 @@
 						TabbedPanelItem:
 							text: 'Brownian'
 							id: brw_tab2
+							background_down: 'Icons/blue.png'
 							on_touch_up: root.on_touch_Slider()
 							BoxLayout:
 								orientation: 'vertical'
@@ -507,26 +574,20 @@
 			TabbedPanelItem:
 				text: 'Walls'
 				id: wall_tab
+				background_down: 'Icons/blue.png'
 				on_touch_up: root.on_touch_Menu()
 				BoxLayout:
 					size_hint: (1, 1)
 					orientation: 'vertical'
+					canvas.before:
+						Color:
+							rgb: 0/255.0, 0/255.0, 0/255.0
+						Rectangle:
+							pos: self.pos
+							size: self.size
 					BoxLayout:
 						orientation: 'horizontal'
 						size_hint: (1, 0.5)
-						BoxLayout:
-							orientation: 'vertical'
-							size_hint: (0.1, 1)
-							Button:
-								#text: 'Add'
-								background_normal: 'Icons/add.png'
-								background_down: 'Icons/addb.png'
-								on_press: root.on_touch_Slider()
-							Button:
-								#text: 'Reset'
-								background_normal: 'Icons/clear.png'
-								background_down: 'Icons/clearb.png'
-								on_press: root.reset_particle_list()
 						BoxLayout:
 							orientation: 'vertical'
 							size_hint: (1, 1)
@@ -568,9 +629,11 @@
 						size_hint: (1, 1)
 						do_default_tab: False
 						background_image: 'Icons/black.png'
+						tab_width: 115
 						TabbedPanelItem:
 							text: 'Random Lattice'
 							id: rl_tab3
+							background_down: 'Icons/blue.png'
 							on_touch_up: root.on_touch_Submenu()
 							BoxLayout:
 								orientation: 'vertical'
@@ -594,6 +657,7 @@
 						TabbedPanelItem:
 							text: 'Subsystems'
 							id: sbs_tab3
+							background_down: 'Icons/blue.png'
 							on_touch_up: root.on_touch_Slider()
 							BoxLayout:
 								orientation: 'vertical'
@@ -633,6 +697,7 @@
 						TabbedPanelItem:
 							text: 'Brownian'
 							id: brw_tab3
+							background_down: 'Icons/blue.png'
 							on_touch_up: root.on_touch_Slider()
 							BoxLayout:
 								orientation: 'vertical'
@@ -712,23 +777,62 @@
 
 <settingswindow>:
 	rbig_slider: rbigslider
+	boxlength_slider: boxlengthslider
+	dt_slider: dtslider
 	BoxLayout:
-		size_hint: (0.9,0.8)
-		orientation: 'horizontal'
-		Label:
-			text: 'R[sub]big[/sub]'
-			markup: True
-			size_hint: (0.15, 1)
-		Label:
-			text: str(round(rbigslider.value,2))
-			size_hint: (0.05, 1)
-		Slider:
-			id: rbigslider
-			size_hint: (0.5, 1)
-			min: 1
-			max: 5
-			step: 1
-			on_touch_up: root.change_settings()
+		orientation: 'vertical'
+		BoxLayout:
+			orientation: 'horizontal'
+			Label:
+				text: 'R[sub]big[/sub]'
+				markup: True
+				size_hint: (0.15, 1)
+			Label:
+				text: str(round(rbigslider.value,2))
+				size_hint: (0.05, 1)
+			Slider:
+				id: rbigslider
+				size_hint: (0.5, 1)
+				min: 1
+				max: 5
+				step: 1
+				on_touch_up: root.change_settings()
+		BoxLayout:
+			orientation: 'horizontal'
+			Label:
+				text: 'Simulation length'
+				markup: True
+				size_hint: (0.15, 1)
+			Label:
+				text: str(round(boxlengthslider.value,2))
+				size_hint: (0.05, 1)
+			Slider:
+				id: boxlengthslider
+				size_hint: (0.5, 1)
+				min: 200
+				max: 400
+				step: 10
+				on_touch_up: root.change_settings()
+			Label:
+				text: 'Angstroms (10[sup]-10[/sup]m)'
+				markup: True
+				size_hint: (0.1, 1)
+		BoxLayout:
+			orientation: 'horizontal'
+			Label:
+				text: 'Time step (dt)'
+				markup: True
+				size_hint: (0.15, 1)
+			Label:
+				text: str(round(dtslider.value,3))
+				size_hint: (0.05, 1)
+			Slider:
+				id: dtslider
+				size_hint: (0.5, 1)
+				min: 0.002
+				max: 0.02
+				step: 0.001
+				on_touch_up: root.change_settings()
 	BoxLayout:
 		orientation: 'horizontal'
 		size_hint: (1, None)
