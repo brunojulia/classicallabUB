@@ -109,7 +109,7 @@ the computation time will be shorter.
 #JV: We then "config" the default window size
 #JV: We have to put these lines first in the code in order to work, why? "Kivy things my friend"
 from kivy.config import Config
-Config.set('kivy','window_icon','Icons/ub.png')
+Config.set('kivy','window_icon','icons/ub.png')
 Config.set('graphics', 'width', '1200')
 Config.set('graphics', 'height', '700')
 
@@ -669,8 +669,8 @@ class SimulationScreen(Screen):
         #This block of code is present at different points in the program
         #It updates the ready flag and changes the icons for compute/play button and the status label.
         self.ready = False
-        self.pcbutton.background_normal = 'Icons/compute.png'
-        self.pcbutton.background_down = 'Icons/computeb.png'
+        self.pcbutton.background_normal = 'icons/compute.png'
+        self.pcbutton.background_down = 'icons/computeb.png'
         self.statuslabel.text = 'Not Ready'
 
     def reset_particle_list(self):
@@ -679,8 +679,8 @@ class SimulationScreen(Screen):
         self.particles = np.array([])
         self.previewlist = []
         self.ready = False
-        self.pcbutton.background_normal = 'Icons/compute.png'
-        self.pcbutton.background_down = 'Icons/computeb.png'
+        self.pcbutton.background_normal = 'icons/compute.png'
+        self.pcbutton.background_down = 'icons/computeb.png'
         self.statuslabel.text = 'Not Ready'
 
     def playcompute(self):
@@ -723,15 +723,15 @@ class SimulationScreen(Screen):
         print("Relative increment of energy: ", (abs((self.s.K[0]+self.s.U[0])-(self.s.U[last]+self.s.K[last]))/(self.s.K[0]+self.s.U[0]))*100,"%")
 
         self.ready = True
-        self.pcbutton.background_normal = 'Icons/play.png'
-        self.pcbutton.background_down = 'Icons/playb.png'
+        self.pcbutton.background_normal = 'icons/play.png'
+        self.pcbutton.background_down = 'icons/playb.png'
         self.statuslabel.text = 'Ready'
 
         #This also saves the temperatures and energies to files
-        np.savetxt('Kenergy.dat',self.s.K,fmt='%10.5f')
-        np.savetxt('Uenergy.dat',self.s.U,fmt='%10.5f')
-        np.savetxt('Tenergy.dat',self.s.K + self.s.U,fmt='%10.5f')
-        np.savetxt('Temps.dat',self.s.T,fmt='%10.5f')
+        np.savetxt('k_energy.dat',self.s.K,fmt='%10.5f')
+        np.savetxt('u_energy.dat',self.s.U,fmt='%10.5f')
+        np.savetxt('t_energy.dat',self.s.K + self.s.U,fmt='%10.5f')
+        np.savetxt('temps.dat',self.s.T,fmt='%10.5f')
 
     def pause(self):
         if(self.running==True):
@@ -887,8 +887,8 @@ class SimulationScreen(Screen):
                 self.nsmallslider3.value = self.nsmall
 
         self.ready = True
-        self.pcbutton.background_normal = 'Icons/play.png'
-        self.pcbutton.background_down = 'Icons/playb.png'
+        self.pcbutton.background_normal = 'icons/play.png'
+        self.pcbutton.background_down = 'icons/playb.png'
         self.statuslabel.text = 'Ready'
         print("")
         print("")
