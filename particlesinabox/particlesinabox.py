@@ -124,6 +124,10 @@ from kivy.app import App
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.floatlayout import FloatLayout
+
+from kivy.uix.screenmanager import ScreenManager, Screen
+from kivy.uix.screenmanager import FadeTransition, SlideTransition
+
 from kivy.uix.label import Label
 from kivy.uix.button import Button
 from kivy.uix.textinput import TextInput
@@ -154,8 +158,7 @@ class settingswindow(FloatLayout):
     cancel = ObjectProperty(None)
 
 
-class main(BoxLayout):
-
+class SimulationScreen(Screen):
     charge = 1.
 
     particles = np.array([])
@@ -212,12 +215,22 @@ class main(BoxLayout):
     #JV: To change the background color from the simulation canvas, check also the kivy file for more
     Window.clearcolor = (0, 0, 0, 1)
 
+    def transition_SM(self):
+        """JV: Screen transition: from 'simulation' to 'menu'"""
+        self.stop()
+        self.manager.transition = FadeTransition()
+        self.manager.current = 'menu'
+
+
     def __init__(self, **kwargs):
-        super(main, self).__init__(**kwargs)
+        super(SimulationScreen, self).__init__(**kwargs)
+
+    def s_pseudo_init(self):
         self.time = 0.
-        #Here you can modify the time of computation and the step
+        #Here you can modify the initial time of computation and the step
         self.T = self.timeslider.value
-        self.dt = 0.01
+        self.dt = 0.01 #JV: Because the time of computation is a number that ends with 0 or 5 (we can change this in the kivy file), we
+        # need a dt that is multiple of 5 (0,01;0,015;...), if we don't do this we get some strange errors (...)
 
         #Initialization of the speed button
         self.speedindex = 3
@@ -230,7 +243,7 @@ class main(BoxLayout):
         self.running = False #Checks if animation is running
         self.paused = False #Checks if animation is paused
         self.ready = False #Checks if computation is done
-        self.previewtimer = Clock.schedule_interval(self.preview,0.04)#Always, runs, shows previews. Crida la funció preview cada 0.04 segons
+        self.previewtimer = Clock.schedule_interval(self.preview,0.04)#Always, runs, shows previews. Calls the preview() function every 0.04 seconds
         self.previewlist = []
         self.progress = 0.
         self.our_submenu = 'Random Lattice' #JV: We start at the "Random Lattice" submenu
@@ -245,7 +258,7 @@ class main(BoxLayout):
 
         self.wallpos = 0 #JV: We define the initial value of the position of the wall in the "Walls" menu
         self.holesize = 20 #JV: We define the initial value of the size of the hole (we need to change the kivy file if we change this value, go to the parameters of this slider and change the "value")
-        self.wallwidth = 2 #JV: We define the initial value of the width of the wall
+        self.wallwidth = 1 #JV: We define the initial value of the width of the wall
 
         #Initialization of the plots
         self.histbox.add_widget(self.histcanvas)
@@ -280,8 +293,7 @@ class main(BoxLayout):
         self.add_particle_list(False)
 
     def update_pos(self,touch):
-        """This function updates the position parameters
-        when you click the screen"""
+        """This function updates the position parameters when you click the screen"""
 
         w = self.plotbox.size[0]
         h = self.plotbox.size[1]
@@ -679,7 +691,7 @@ class main(BoxLayout):
 
         elif(self.ready==True):
             if(self.running==False):
-                self.timer = Clock.schedule_interval(self.animate,0.05)
+                self.timer = Clock.schedule_interval(self.animate,0.04)
                 self.running = True
                 self.paused = False
             elif(self.running==True):
@@ -766,7 +778,7 @@ class main(BoxLayout):
 
     def advanced_settings(self):
         content = settingswindow(change_settings = self.change_settings, cancel = self.dismiss_popup)
-        self._popup = Popup(title='Advanced Settings', content = content, size_hint = (1,1))
+        self._popup = Popup(title='Advanced Settings', content = content, size_hint = (0.6,1))
         self._popup.content.rbig_slider.value = int(self.Rbig/self.R)
         self._popup.content.boxlength_slider.value = self.L
         self._popup.content.dt_slider.value = self.dt
@@ -943,7 +955,7 @@ class main(BoxLayout):
         the preview of the lattice mode before adding is not programmed (mainly because it is a random process)"""
 
         if(self.running == False and self.paused == False):
-            #JV: We can add conditions when there will be different menus, now it's not needed
+            #JV: We can add conditions if we need it for different menus (like we do for the "walls" menu)
             self.plotbox.canvas.clear()
             with self.plotbox.canvas:
                 if(self.our_submenu == 'Random Lattice'):
@@ -1242,31 +1254,16 @@ class main(BoxLayout):
                         Color(0.32,0.86,0.86)
                         Ellipse(pos=((self.s.X[i,j])*scale*self.R+w/2.-self.R*scale/2.,(self.s.Y[i,j])*scale*self.R+h/2.-self.R*scale/2.),size=(self.R*scale,self.R*scale))
                     else:
-#                        Color(0.43,0.96,0.16)
-#                        Ellipse(pos=((self.s.X[i,j])*scale*self.R+w/2.-self.Rbig*scale/2.,(self.s.Y[i,j])*scale*self.R+h/2.-self.Rbig*scale/2.),size=(self.Rbig*scale,self.Rbig*scale))
-#                        if(abs(self.s.X[i,j]-self.s.X[i-10,j]) < 0.5*self.L/self.R and abs(self.s.Y[i,j]-self.s.Y[i-10,j]) < 0.5*self.L/self.R):
-#                            self.plotbox.canvas.add(self.obj2)
-#                            self.points.append((self.s.X[i,j])*scale*self.R+w/2.)
-#                            self.points.append((self.s.Y[i,j])*scale*self.R+h/2.)
-#                            self.obj2.add(Color(0.43,0.96,0.16))
-#                            self.obj2.add(Line(points=self.points,width = 1.5))
-#                        else:
-#                            print("hey")
-#                            self.points.append((self.s.X[i,j])*scale*self.R+w/2.)
-#                            self.points.append((self.s.Y[i,j])*scale*self.R+h/2.)
-#                        print(self.s.Y[i,j]-self.s.Y[i-10,j], self.L/self.R)
-
                         Color(0.43,0.96,0.16)
                         Ellipse(pos=((self.s.X[i,j])*scale*self.R+w/2.-self.Rbig*scale/2.,(self.s.Y[i,j])*scale*self.R+h/2.-self.Rbig*scale/2.),size=(self.Rbig*scale,self.Rbig*scale))
-                        #JV: These lines inside the condition make the trace of the big particle. We will only draw it if we are not in the "timeinversion" mode
-                        if(self.inversion == False):
-                            #if(abs(self.s.X[i,j]-self.s.X[i-1,j]) < 0.3*self.L and abs(self.s.Y[i,j]-self.s.Y[i-1,j]) < 0.3*self.L):
-                            self.plotbox.canvas.add(self.obj2)
-#                            self.points.append((self.s.X[i,j])*scale*self.R+w/2.)
-#                            self.points.append((self.s.Y[i,j])*scale*self.R+h/2.)
-                            self.obj2.add(Color(0.43,0.96,0.16))
-                            self.obj2.add(Ellipse(pos=((self.s.X[i,j])*scale*self.R+w/2.,(self.s.Y[i,j])*scale*self.R+h/2.),size=(self.Rbig*scale/10,self.Rbig*scale/10)))
-    #                        print(self.s.Y[i,j]-self.s.Y[i-1,j], self.L/self.R)
+
+                        #JV: These lines inside the condition make the trace of the big particle. We will only draw it if we are not in the "timeinversion" mode.
+                        #JV: THIS FEATURE IS NOT ACTIVE, NEEDS UPDATE: The trace, as it is drawn an ellipse each frame, it stacks on the canvas an doesn't update when
+                        # changing the size of the window, needs to change so each frame draws ALL the ellipses, don't know how this will affect at the FPS
+#                        if(self.inversion == False):
+#                            self.plotbox.canvas.add(self.obj2)
+#                            self.obj2.add(Color(0.43,0.96,0.16))
+#                            self.obj2.add(Ellipse(pos=((self.s.X[i,j])*scale*self.R+w/2.,(self.s.Y[i,j])*scale*self.R+h/2.),size=(self.Rbig*scale/15,self.Rbig*scale/15)))
 
 
             self.time += interval*self.speed #Here is where speed accelerates animation
@@ -1419,19 +1416,349 @@ class main(BoxLayout):
 #            print(self.Vacu.shape)
 #
 #        if(self.acucounter >= int(1./self.dt)):
-#            self.acucounter = 0
+  #            self.acucounter = 0
 #
 #        if(self.time >= self.T):
 #            self.time = 0.
 #            self.Vacu = np.array([])
 
+#
+## Declare both screens
+#class MenuScreen(Screen):
+#    pass
+#
+#class SettingsScreen(Screen):
+#    pass
+#
+## Create the screen manager
+#sm = ScreenManager()
+#sm.add_widget(MenuScreen(name='menu'))
+#sm.add_widget(SettingsScreen(name='settings'))
 
+"""
+JV: In this class we will try to make a "live" computation, so we don't need to wait to compute to start playing. Only needs
+ physystem.py because we will use the particle() class that is defined there, but all the math is done here. Let's see if something
+ like this is "playable".
+"""
+class GameScreen(Screen):
+    charge = 1.
 
+    particles = np.array([])
 
+    def __init__(self, **kwargs):
+        super(GameScreen, self).__init__(**kwargs)
+
+    def g_pseudo_init(self):
+        self.time = 0.
+        #JV: Here you can modify the time step, no time of computation here because it will keep playing until we stop it
+        self.dt = 0.01 #JV: Because the time of computation is a number that ends with 0 or 5 (we can change this in the kivy file), we
+        # need a dt that is multiple of 5 (0,01;0,015;...), if we don't do this we get some strange errors (...)
+
+        #Set flags to False
+        self.running = False #Checks if animation is running
+        self.paused = False #Checks if animation is paused
+        self.previewtimer = Clock.schedule_interval(self.preview,0.04) #JV: Will call the preview() funciton every 0.04 seconds
+        self.previewlist = []
+        self.progress = 0.
+        self.n = 8 #JV: Modify this value if at the start you want to show more than one particle in the simulation (as a default value)
+        self.temp = 9 #JV: Initial temperature of the particles
+
+        self.mass = 1 #JV: change this if you want to change the initial mass
+
+        #JV: Here you can modify the units of the simulation
+        self.V0 = 0.01 #eV
+        self.R = 3.405 #A
+        self.L = 200. #A
+        self.M = 0.04 #kg/mol
+
+        #JV:This variable defines the number of close particles that will be stored in the list (go to (physystem.py) close_particles_list() for more info)
+        self.Nlist = int(1*(self.n))
+
+        self.add_particle_list(False)
+
+    def preview(self,interval):
+        """JV: This function is called every frame and draws the particles if we are running the game."""
+        if(self.running == False and self.paused == False):
+            self.plotbox.canvas.clear()
+            with self.plotbox.canvas:
+                for i in range(0,len(self.previewlist),1):
+                    x0 = self.previewlist[i][0]
+                    y0 = self.previewlist[i][1]
+                    vx0 = self.previewlist[i][2]
+                    vy0 = self.previewlist[i][3]
+
+                    w = self.plotbox.size[0]
+                    h = self.plotbox.size[1]
+                    b = min(w,h)
+                    scale = b/self.L
+
+                    Color(0.34,0.13,1.0)
+                    Ellipse(pos=(x0*scale+w/2.-self.R*scale/2.,y0*scale+h/2.-self.R*scale/2.),size=(self.R*scale,self.R*scale))
+                    Line(points=[x0*scale+w/2.,y0*scale+h/2.,vx0*scale+w/2.+x0*scale,vy0*scale+w/2.+y0*scale])
+
+    def add_particle_list(self,inversion):
+        """JV: Adds the particles calling the particle() class that is stored in physystem.py"""
+        self.stop() #I stop the simultion to avoid crashes
+
+        self.reset_particle_list();
+
+        #JV: We now locate the initial positions of these particles
+        self.X,self.Y = np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n)
+
+        temp = self.temp
+        theta = np.random.ranf(self.n**2)*2*np.pi
+        self.Vx,self.Vy = 0.5*np.cos(theta),0.5*np.sin(theta)
+
+        vcm = np.array([np.sum(self.Vx),np.sum(self.Vy )])/self.n**2
+        kin = np.sum(self.Vx**2+self.Vy **2)/(self.n**2)
+
+        if(self.n == 1): #JV: To avoid problems, if we only have one particle it will not obey that the velocity of the center of mass is 0
+            self.Vx = self.Vx*np.sqrt(2*temp/kin)
+            self.Vy = self.Vy*np.sqrt(2*temp/kin)
+        else:
+            self.Vx = (self.Vx-vcm[0])*np.sqrt(2*temp/kin)
+            self.Vy = (self.Vy-vcm[1])*np.sqrt(2*temp/kin)
+
+        k = 0
+        for i in range(0,self.n):
+            for j in range(0,self.n):
+                #JV: In "particles" we have the positions and velocities in reduced units (the velocities are already transformed,
+                # but for the positions we need to include the scale factor)
+                self.particles = np.append(self.particles,particle(self.mass,self.charge,self.R/self.R,np.array([self.X[i],self.Y[j]])/self.R,np.array([self.Vx[k],self.Vy[k]]),2))
+
+                #JV: In this new array we will have the positions and velocities in the physical units (Angstrom,...)
+                self.previewlist.append([self.X[i],self.Y[j],self.Vx[k]*self.R,self.Vy[k]*self.R])
+
+                k += 1
+
+        #JV: We create a PhySystem class by passing the array of particles and the physical units of the simulation as arguments
+        #JV: self.wallpos, self.holesize, self.wallwidth are in Angtroms, so we need to divide it by self.R to have it in reduced units (the units we work in physystem)
+
+        self.s = PhySystem(self.particles,[self.V0,self.R,self.L/self.R,"In a box","Random Lattice",self.n,0,0,0,0])
+        #JV: We redifine the self.X, self.Y so we get an n*n array, so we can iterate through each particle
+        self.X = np.vectorize(lambda i: i.r[0])(self.particles)
+        self.Y = np.vectorize(lambda i: i.r[1])(self.particles)
+        self.r = np.vectorize(lambda i: i.R)(self.particles)
+
+    def stop(self):
+        self.pause()
+        self.paused = False
+        self.time = 0
+
+    def pause(self):
+        if(self.running==True):
+            self.paused = True
+            self.timer.cancel()
+            self.running = False
+        else:
+            pass
+
+    def reset_particle_list(self):
+        #Empties particle list
+        self.stop()
+        self.particles = np.array([])
+        self.previewlist = []
+
+    def play_button(self):
+        """JV: Function that is called when pressing the play button on the interface, it starts the "game" """
+        if(self.running==False):
+            self.timer = Clock.schedule_interval(self.step_animate,0.04)
+            self.running = True
+            self.paused = False
+        elif(self.running==True):
+            pass
+
+    def step_animate(self,interval):
+        """JV: Calculates a step of vel_verlet and then draws it. Keeps doing this until we stop it from the interface"""
+        w = self.plotbox.size[0]
+        h = self.plotbox.size[1]
+        b = min(w,h)
+        scale = b/self.L
+        self.plotbox.canvas.clear()
+
+        N = self.particles.size
+
+        #JV: Now we calculate the step of vel_verlet and we store the information we get in self.X[j], self.Y[j], self.Vx[j], self.Vy[j]
+
+        #JV: If it is the first step we have to "manually" call some functions in order to obtain the initial acceleration of the particles
+        if(self.time == 0):
+            #JV: We get the values from particles because we need all the values in reduced units, as they are saved in particles
+            self.X = np.vectorize(lambda i: i.r[0])(self.particles)
+            self.Y = np.vectorize(lambda i: i.r[1])(self.particles)
+            self.Vx = np.vectorize(lambda i: i.v[0])(self.particles)
+            self.Vy = np.vectorize(lambda i: i.v[1])(self.particles)
+            #JV: Now the values of the mass and radius in reduced units
+            self.m = np.vectorize(lambda i: i.m)(self.particles)
+            self.r = np.vectorize(lambda i: i.R)(self.particles)
+
+            MX, MXT = np.meshgrid(self.X[:],self.X[:])
+            MY, MYT = np.meshgrid(self.Y[:],self.Y[:])
+
+            dx = MXT - MX
+            dx = dx
+
+            dy = MYT - MY
+            dy = dy
+
+            r2 = np.square(dx)+np.square(dy)
+
+            self.close_list = PhySystem.close_particles_list(self.s,r2,self.Nlist) #JV: We calculate the matrix that contains in every row the indexs of the m closest particles
+
+            self.X0 = self.X
+            self.Y0 = self.Y
+            self.VX0 = self.Vx
+            self.VY0 = self.Vy
+
+            self.a0 = (1/self.m)*np.transpose(self.fv(self.X0[:],self.Y0[:]))
+
+        #JV: call velocityverlet to compute the next position
+        self.X,self.Y,self.Vx,self.Vy,self.a1 = self.vel_verlet(self.time,self.dt,np.array([self.X0,self.Y0]),np.array([self.VX0,self.VY0]),self.a0)
+
+        #JV: We keep track of this step in time:
+        self.time += self.dt
+
+        self.a0 = self.a1
+
+        #Redefine and repeat
+        self.X0,self.Y0 = self.X,self.Y
+        self.VX0,self.VY0 = self.Vx,self.Vy
+
+        #JV: Now we draw the particles
+        with self.plotbox.canvas:
+            for j in range(0,N):
+                Color(1.0,0.0,0.0)
+                Ellipse(pos=((self.X[j])*scale*self.R+w/2.-self.R*scale/2.,(self.Y[j])*scale*self.R+h/2.-self.R*scale/2.),size=(self.r[j]*self.R*scale,self.r[j]*self.R*scale))
+
+    def fv(self,X,Y):
+        """JV: Strongly based on the fv() function in PhySystem (inside physystem.py) but adapted to this scenario, see fv() in physystem.py for a good detailed explanation."""
+        L = self.L/self.R #JV: We are working in reduced units!
+        N = self.n**2
+
+        MX, MXT = np.meshgrid(X,X,copy=False)
+        MY, MYT = np.meshgrid(Y,Y,copy=False)
+        dx = MXT - MX
+        dx = dx
+        dy = MYT - MY
+        dy = dy
+
+        r2 = np.square(dx)+np.square(dy)
+
+        dUx = 0.
+        dUy = 0.
+        f = np.zeros([N,2])
+
+        if(np.round(self.time,1)%0.5== 0): #JV: every certain amount of steps we update the list
+            self.close_list = PhySystem.close_particles_list(self.s,r2,self.Nlist)
+
+        for j in range(0,N):
+            dUx = 0
+            dUy = 0
+
+            #JV: we now calculate the force with only the sqrt(N) closest particles
+            for k in range(0,self.Nlist):
+                c = int(self.close_list[j][k])
+
+                if((r2[j,c] < 4*max(self.r[j],self.r[c])) and (r2[j,c] > 10**(-2))):
+                    #JV: We put self.r in the arguments because we want the ratius of both particles in reduced units
+                    dUx = dUx + self.dLJverlet(dx[j,c],r2[j,c],self.r[j],self.r[c])
+                    dUy = dUy + self.dLJverlet(dy[j,c],r2[j,c],self.r[j],self.r[c])
+
+            f[j,:] = f[j,:]+np.array([dUx,dUy])
+
+        return f
+
+    def vel_verlet(self,t,dt,r0,v0,a0):
+        """JV: Like the previous function, this function is strongly based too on the vel_verlet() function in PhySystem (inside physystem.py) but adapted to
+         this scenario, see vel_verlet() in physystem.py for a good detailed explanation."""
+        r1 = r0 + v0*dt + 0.5*a0*dt**2 #JV: We calculate x(t+dt)
+        a1 = (1/self.m)*np.transpose(self.fv(r1[0,:],r1[1,:])) #JV: From x(t+dt) we get a(t+dt)
+        v1 = v0 + 0.5*(a0+a1)*dt #JV: From the a(t+dt) and a(t) we get v(t+dt)
+
+        L = self.L/self.R #JV: We are working in reduced units!
+
+        #JV: Border conditions, elastic collision. (The "+1" is because 1 is the radius of the ball, in the reduced units that we calculate this part)
+        v1[0,:] = np.where((abs(r1[0,:])+self.r/2)**2 > (0.49*L)**2,-v1[0,:],v1[0,:])
+        v1[1,:] = np.where((abs(r1[1,:])+self.r/2)**2 > (0.49*L)**2,-v1[1,:],v1[1,:])
+
+        return r1[0,:],r1[1,:],v1[0,:],v1[1,:],a1
+
+    def dLJverlet(self,x,r2,R1,R2):
+        """JV: This function too is based on dLJverlet() in PhySystem (the class inside physystem.py) but adapted. Go there to get a fully detailed explanation."""
+        rc = (2**(1/6))*((R1+R2)/(2))
+        sig_int = (R1+R2)/(2)
+
+        if((r2**(1/2))>rc):
+            value = 0
+        else:
+            value = ((48.*x)/(r2))*(((((sig_int**2)*1.)/r2)**6) - ((((sig_int**2)*0.5)/r2)**3))
+
+        return value
+
+    def transition_GM(self):
+        """JV: Screen transition: from 'menu' to 'game' """
+        self.stop()
+        self.manager.transition = FadeTransition()
+        self.manager.current = 'menu'
+
+    def update_pos(self,touch):
+        """JV: This function is called when you click the screen"""
+        w = self.plotbox.size[0]
+        h = self.plotbox.size[1]
+        b = min(w,h)
+        scale = b/self.L
+        #JV: We divide by scale so we get an independent-size-of-the-window coordinate
+        x = (touch.pos[0] - b/2.)/scale
+        y = (touch.pos[1] - b/2.)/scale
+        touch = self.is_touching(x/self.R,y/self.R) #JV: We pass the coordinate arguments in reduced units so it has the same units as the particles
+        if(touch != None):
+            print("x: ",np.round(x,2),"y: ",np.round(y,2)," -> Bola ",touch," tocada")
+
+    def is_touching(self,x,y):
+        """JV: Function that when passing x,y returns the id of the particle if there is one, returns None if there isn't a particle in this location."""
+        for i in range (self.n**2):
+            if(x < self.X[i]+self.r[i] and x > self.X[i]-self.r[i] and y < self.Y[i]+self.r[i] and y > self.Y[i]-1):
+                return i
+        return None
+
+"""
+JV: Manages and has access to the screens.
+"""
+class MyScreenManager(ScreenManager):
+
+    def  __init__(self, **kwargs):
+        """JV: Initiates the manager and the screens. Called whenever an instance of MyScreenManager is created."""
+        super(MyScreenManager, self).__init__(**kwargs)
+        self.get_screen('simulation').s_pseudo_init()
+        self.get_screen('game').g_pseudo_init()
+
+"""
+JV: Initial screen when the app is opened. This initial screen it's the menu that gives access to the other screens.
+"""
+class MenuScreen(Screen):
+
+    def __init__ (self, **kwargs):
+        """JV: Initiates the screen by calling Screen's __init__. Called from ScreenManager __init__."""
+        super(MenuScreen, self).__init__(**kwargs)
+
+    def transition_MG(self):
+        """JV: Screen transition: from 'menu' to 'game' """
+        GameScreen()
+        self.manager.transition = FadeTransition()
+        self.manager.current = 'game'
+
+    def transition_MS(self):
+        """JV: Screen transition: from 'menu' to 'simulation' """
+        SimulationScreen()
+        self.manager.transition = FadeTransition()
+        self.manager.current = 'simulation'
+
+"""
+JV: This is the app class, when it opens calls the ScreenManager
+"""
 class particlesinaboxApp(App):
 
     def build(self):
-        return main()
+        return MyScreenManager()
 
 
 if __name__ == '__main__':

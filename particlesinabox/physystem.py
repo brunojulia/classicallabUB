@@ -201,23 +201,23 @@ class PhySystem:
 
         if(self.param[3] == "In a box"):
             #JV: Border conditions, elastic collision. (The "+1" is because 1 is the radius of the ball, in the reduced units that we calculate this part)
-            v1[0,:] = np.where((r1[0,:]**2)+(1)**2 > (0.49*L)**2,-v1[0,:],v1[0,:])
-            v1[1,:] = np.where((r1[1,:]**2)+(1)**2 > (0.49*L)**2,-v1[1,:],v1[1,:])
+            v1[0,:] = np.where((abs(r1[0,:])+self.R/2)**2 > (0.49*L)**2,-v1[0,:],v1[0,:])
+            v1[1,:] = np.where((abs(r1[1,:])+self.R/2)**2 > (0.49*L)**2,-v1[1,:],v1[1,:])
         elif(self.param[3] == "Free!"):
             if(self.param[4] == "Brownian"):
                 #JV: We want to track the position of the brownian ball. If it goes through a wall, we will acknowledge it and save this into a variable that
                 # counts the amount of times it has gone through (imagine this as a grid of simulations in which we start at the center one)
                 if(r1[0,self.particles.size-1] > 0.5*L):
-                    print("passa x")
+#                    print("passa x")
                     self.wallcount[0] += 1 #JV: At position 0 in self.wallcount we track the x axis, we sum 1 if it goes through the right wall
                 elif(r1[0,self.particles.size-1] < -0.5*L):
-                    print("passa -x")
+#                    print("passa -x")
                     self.wallcount[0] -= 1 #JV: If it goes through the left wall, we subtract 1
                 elif(r1[1,self.particles.size-1] > 0.5*L):
-                    print("passa y")
+#                    print("passa y")
                     self.wallcount[1] += 1 #JV: Now the same for the y axis
                 elif(r1[1,self.particles.size-1] < -0.5*L):
-                    print("passa -y")
+#                    print("passa -y")
                     self.wallcount[1] -= 1
             r1[0,:] = np.where(r1[0,:] > 0.5*L,r1[0,:]-1*L,r1[0,:])
             r1[0,:] = np.where(r1[0,:] < -0.5*L,r1[0,:]+1*L,r1[0,:])
@@ -226,13 +226,44 @@ class PhySystem:
         elif(self.param[3] == "Walls"):
             #JV: Border conditions, elastic collision with the limits of the simulations aswell as the elastic wall
             #JV: First the limits of the simulation
-            v1[0,:] = np.where((r1[0,:]**2)+(1)**2 > (0.49*L)**2,-v1[0,:],v1[0,:])
-            v1[1,:] = np.where((r1[1,:]**2)+(1)**2 > (0.49*L)**2,-v1[1,:],v1[1,:])
+            bouncing_limits_x = np.where((abs(r1[0,:])+self.R/2)**2 > (0.49*L)**2,True,False)
+            bouncing_limits_y = np.where((abs(r1[1,:])+self.R/2)**2 > (0.49*L)**2,True,False)
             #JV: Now the elastic wall
             wallpos = self.param[7]
             holesize = self.param[8]
             wallwidth = self.param[9]
-            v1[0,:] = np.where(np.logical_and(np.logical_and(r1[0,:] + 1 > (wallpos-wallwidth/2),r1[0,:] - 1 < (wallpos+wallwidth/2)),abs(r1[1,:]) > holesize/2),-v1[0,:],v1[0,:])
+            bounce_left = np.where(np.logical_and(r1[0,:]+self.R/2 > (wallpos-wallwidth/2),abs(r1[1,:])+self.R/2 > holesize/2),True,False)
+            bounce_right = np.where(np.logical_and(r1[0,:]-self.R/2 < (wallpos+wallwidth/2),abs(r1[1,:])+self.R/2 > holesize/2),True,False)
+            is_leftside = np.where(r1[0,:] < wallpos, True, False)
+            is_inhole = np.where(abs(r1[1,:])+self.R/2 > holesize/2, True, False)
+
+            for i in range (self.particles.size):
+                if(bouncing_limits_x[i]):
+                    v1[0,i] = -v1[0,i]
+                elif(bouncing_limits_y[i]):
+                    v1[1,i] = -v1[1,i]
+                else:
+                    if(is_leftside[i] and bounce_left[i] and is_inhole[i] and self.bouncing[i] == 0):
+                        v1[0,i] = -v1[0,i]
+    #                    print("bounce_left ",i)
+                    elif(not(is_leftside[i]) and bounce_right[i] and is_inhole[i] and self.bouncing[i] == 0):
+                        v1[0,i] = -v1[0,i]
+    #                    print("bounce_right ",i)
+
+                    #JV: This additional condition is because we want to avoid particles entering in a loop of conditions when bouncing and
+                    # making them "get stuck" in the middle of the wall, so now when it bounces it has to wait 2 more time steps to be able to bounce again
+                    if(is_leftside[i] and bounce_left[i] and is_inhole[i]):
+                        self.bouncing[i] += 1
+                    elif(not(is_leftside[i]) and bounce_right[i] and is_inhole[i]):
+                        self.bouncing[i] += 1
+                    else:
+                        if (self.bouncing[i] != 0):
+                            self.bouncing[i] -= 1
+
+#            print(r1[1,:], holesize/2)
+#            v1[0,:] = np.where(r1[0,:] < wallpos, np.where(np.logical_and(r1[0,:] + 1 > (wallpos-wallwidth/2),abs(r1[1,:]) > holesize/2),-v1[0,:],v1[0,:]),np.where(np.logical_and(r1[0,:] - 1 < (wallpos+wallwidth/2),abs(r1[1,:]) > holesize/2),-v1[0,:],v1[0,:]))
+
+#            v1[0,:] = np.where(np.logical_and(np.logical_and(r1[0,:] + 1 > (wallpos-wallwidth/2),r1[0,:] - 1 < (wallpos+wallwidth/2)),abs(r1[1,:]) > holesize/2),-v1[0,:],v1[0,:])
 #            v1[1,:] = np.where(np.logical_and(abs(r1[1,:]) + 1 > holesize/2,np.logical_and(r1[0,:] + 1 > wallpos+wallwidth/2, r1[0,:] - 1 < wallpos+wallwidth/2)),-v1[1,:],v1[1,:])
 
 
@@ -361,7 +392,7 @@ class PhySystem:
                         if((X[j]**2+Y[j]**2) > (0.8*L)**2):
                             u = u + walls([X[j],Y[j]],self.param)
 
-            #JV: If the argument it's True, we will append the energy to our corresponding aray
+            #JV: If the argument it's True, we will append the energy to our corresponding array
             if(append == True):
                 utot = np.append(utot,u)
 
@@ -401,6 +432,10 @@ class PhySystem:
         #JV: Here we define the number of the GxG grid that we will need to calcule the entropy, change in order to change the precision of this grid
         self.G = 5
 
+        if(self.param[3] == "Walls"):
+            #JV: We create a list that will be useful for the walls submenu, that will help us in the border conditions of the wall, see in vel_verlet()
+            self.bouncing = np.zeros(self.particles.size)
+
         if(self.param[4] == "Subsystems"): #JV: If we are on "Subsystems", we will count different the types of particles
             self.grid = np.zeros([self.G,self.G,2])
         else:
@@ -408,8 +443,8 @@ class PhySystem:
 
         self.entropy_val = 0
 
-        if(self.param[4] == "Brownian"):
         #JV: If we are simulating the brownian simulation, we initialize the array that will keep track if the brownian particle goes through a wall
+        if(self.param[4] == "Brownian"):
             self.wallcount = np.zeros([2])
 
         np.vectorize(lambda i: i.reset())(self.particles) #This line resets the particles to their initial position
@@ -460,7 +495,7 @@ class PhySystem:
                 #JV: call velocityverlet to compute the next position
                 X1,Y1,VX1,VY1,a1 = self.vel_verlet(t,dt,np.array([X0,Y0]),np.array([VX0,VY0]),a0)
 
-                t = t + dt
+                t += dt
 
                 self.X = np.vstack((self.X,X1))
                 self.Y = np.vstack((self.Y,Y1))

@@ -1,739 +1,883 @@
 #:import Factory kivy.factory.Factory
 
-<main>:
+<MyScreenManager>:
+	MenuScreen:
+	SimulationScreen:
+	GameScreen:
+
+<MenuScreen>:
+	name: 'menu'
+
+	BoxLayout:
+		#title, buttons and logo
+		orientation: 'vertical'
+		padding: [root.width/3,0]
+		Image:
+			id: QM_image_id
+			source: 'Icons/portada.png'
+			allow_stretch: True
+			size_hint_y: 1
+
+		BoxLayout:
+		#buttons
+			orientation: 'vertical'
+			padding: [self.width/12, 0]
+			spacing: self.height/10
+			size_hint_y: 2
+
+			Button:
+				id: s_to_g
+				background_color: (0, 0, 0, 1)
+				markup: True
+				text: '[color=009fe4]Simulation[/color]'
+				font_size: self.height
+				on_press: root.transition_MS()
+				canvas.before:
+					Color:
+						rgba: .5, .5, .5, 1
+					Line:
+						width: 2
+						rectangle: self.x, self.y, self.width, self.height
+
+			Button:
+				size_hint_y: 1
+				id: s_to_g
+				background_color: (0, 0, 0, 1)
+				markup: True
+				text: '[color=159fe4]Game[/color]'
+				font_size: self.height
+				on_press: root.transition_MG()
+				canvas.before:
+					Color:
+						rgba: .5, .5, .5, 1
+					Line:
+						width: 2
+						rectangle: self.x, self.y, self.width, self.height
+
+			Button:
+				id: info_id
+				background_color: (0, 0, 0, 1)
+				markup: True
+				text: '[color=2b9fe4]...[/color]'
+				font_size: self.height
+				#on_release: Factory.InfoPopup().open()
+				canvas.before:
+					Color:
+						rgba: .5, .5, .5, 1
+					Line:
+						width: 2
+						rectangle: self.x, self.y, self.width, self.height
+
+			Button:
+				id: physics_id
+				background_color: (0, 0, 0, 1)
+				markup: True
+				text: '[color=3b9ff2]...[/color]'
+				font_size: self.height
+				#on_release: Factory.PhysicsPopup().open()
+				canvas.before:
+					Color:
+						rgba: .5, .5, .5, 1
+					Line:
+						width: 2
+						rectangle: self.x, self.y, self.width, self.height
+
+		Image:
+			id: UB_logo_id
+			size_hint_y: 0.75
+			source: 'Icons/logo_ub-transparente.png'
+			size_hint_x: 0.6
+			pos_hint: {'center_x': 0.5, 'center_y': 0.75}
+			allow_stretch: True
+
+<SimulationScreen>:
+	name: 'simulation'
 	orientation: 'horizontal'
 
-	pcbutton: pc_button.__self__
+	pcbutton: pc_button
 
-	massslider: mass_slider.__self__
-	rslider: r_slider.__self__
-	nrslider: nr_slider.__self__
-	n1slider: n1_slider.__self__
-	n2slider: n2_slider.__self__
-	nbigslider: nbig_slider.__self__
-	nsmallslider: nsmall_slider.__self__
-
-
-	massslider2: mass_slider2.__self__
-	rslider2: r_slider2.__self__
-	nrslider2: nr_slider2.__self__
-	n1slider2: n1_slider2.__self__
-	n2slider2: n2_slider2.__self__
-	nbigslider2: nbig_slider2.__self__
-	nsmallslider2: nsmall_slider2.__self__
-
-	wallslider: wall_slider.__self__
-	holeslider: hole_slider.__self__
-	nrslider3: nr_slider3.__self__
-	n1slider3: n1_slider3.__self__
-	n2slider3: n2_slider3.__self__
-	nbigslider3: nbig_slider3.__self__
-	nsmallslider3: nsmall_slider3.__self__
+	massslider: mass_slider
+	rslider: r_slider
+	nrslider: nr_slider
+	n1slider: n1_slider
+	n2slider: n2_slider
+	nbigslider: nbig_slider
+	nsmallslider: nsmall_slider
 
 
-	plotbox: plot_box.__self__
-	speedbutton: speed_button.__self__
-	statuslabel: status_label.__self__
-	menu: menu.__self__
-	timeslider: time_slider.__self__
+	massslider2: mass_slider2
+	rslider2: r_slider2
+	nrslider2: nr_slider2
+	n1slider2: n1_slider2
+	n2slider2: n2_slider2
+	nbigslider2: nbig_slider2
+	nsmallslider2: nsmall_slider2
 
-	inaboxtab: inabox_tab.__self__
-	freetab: free_tab.__self__
-	walltab: wall_tab.__self__
+	wallslider: wall_slider
+	holeslider: hole_slider
+	nrslider3: nr_slider3
+	n1slider3: n1_slider3
+	n2slider3: n2_slider3
+	nbigslider3: nbig_slider3
+	nsmallslider3: nsmall_slider3
 
-	inaboxmenu: inabox_menu.__self__
-	freemenu: free_menu.__self__
-	wallmenu: wall_menu.__self__
 
-	plotmenu: plot_menu.__self__
-	progressbar: progress_bar.__self__
-	enplotbox: enplot_box.__self__
-	histbox: hist_box.__self__
-	acuhistbox: acuhist_box.__self__
-	extraplotbox: extraplot_box.__self__
-	extraplottab: extraplot_tab.__self__
+	plotbox: plot_box
+	speedbutton: speed_button
+	statuslabel: status_label
+	menu: menu
+	timeslider: time_slider
 
-	rlmenu: rl_tab.__self__
-	sbsmenu: sbs_tab.__self__
-	brwmenu: brw_tab.__self__
+	inaboxtab: inabox_tab
+	freetab: free_tab
+	walltab: wall_tab
 
-	rlmenu2: rl_tab2.__self__
-	sbsmenu2: sbs_tab2.__self__
-	brwmenu2: brw_tab2.__self__
+	inaboxmenu: inabox_menu
+	freemenu: free_menu
+	wallmenu: wall_menu
 
-	rlmenu3: rl_tab3.__self__
-	sbsmenu3: sbs_tab3.__self__
-	brwmenu3: brw_tab3.__self__
+	plotmenu: plot_menu
+	progressbar: progress_bar
+	enplotbox: enplot_box
+	histbox: hist_box
+	acuhistbox: acuhist_box
+	extraplotbox: extraplot_box
+	extraplottab: extraplot_tab
 
-	BoxLayout:
-		id: plot_box
-		size_hint: (None, 1)
-		size: (self.height, self.height)
-		on_touch_down: root.update_pos(args[1])
+	rlmenu: rl_tab
+	sbsmenu: sbs_tab
+	brwmenu: brw_tab
+
+	rlmenu2: rl_tab2
+	sbsmenu2: sbs_tab2
+	brwmenu2: brw_tab2
+
+	rlmenu3: rl_tab3
+	sbsmenu3: sbs_tab3
+	brwmenu3: brw_tab3
 
 	BoxLayout:
-		orientation: 'vertical'
-		size_hint: (0.25, 1)
 		BoxLayout:
-			size_hint: (1, 0.1)
-			orientation: 'horizontal'
-			Button:
-				id: pc_button
-				#text: 'Compute'
-				background_normal: 'Icons/compute.png'
-				background_down: 'Icons/computeb.png'
-				on_press: root.playcompute()
-			Button:
-				#text: 'Pause'
-				background_normal: 'Icons/pause.png'
-				background_down: 'Icons/pauseb.png'
-				on_press: root.pause()
-			Button:
-				#text: 'Stop'
-				background_normal: 'Icons/stop.png'
-				background_down: 'Icons/stopb.png'
-				on_press: root.stop()
-			Button:
-				id: speed_button
-				background_normal: 'Icons/black.png'
-				font_size: '30sp'
-				markup: True
-				on_press: root.change_speed()
-			Button:
-				#text: 'Time Inversion'
-				background_normal: 'Icons/rewind.png'
-				background_down: 'Icons/rewindb.png'
-				on_press: root.timeinversion()
-			Button:
-				id: advanced_settings
-				background_normal: 'Icons/compute.png'
-				background_down: 'Icons/computeb.png'
-				on_press: root.advanced_settings()
-		BoxLayout:
-			size_hint: (1, 0.1)
-			orientation: 'horizontal'
-			Label:
-				text: 'Status:'
-				canvas.before:
-					Rectangle:
-						pos: self.pos
-						size: self.size
-						source: "Icons/black.png"
-			Label:
-				id: status_label
-				text: 'Ready'
-				canvas.before:
-					Rectangle:
-						pos: self.pos
-						size: self.size
-						source: "Icons/black.png"
-			Button:
-				#text: 'Save'
-				background_normal: 'Icons/save.png'
-				background_down: 'Icons/saveb.png'
-				on_press: root.savepopup()
-			Button:
-				#text: 'Load'
-				background_normal: 'Icons/load.png'
-				background_down: 'Icons/laodb.png'
-				on_press: root.loadpopup()
-		BoxLayout:
-			size_hint: (1, 0.1)
-			orientation: 'horizontal'
-			Label:
-				text: 'Computation Time:'
-				canvas.before:
-					Rectangle:
-						pos: self.pos
-						size: self.size
-						source: "Icons/black.png"
-				size_hint: (0.4, 1)
-			Label:
-				text: str(round(time_slider.value,2))
-				canvas.before:
-					Rectangle:
-						pos: self.pos
-						size: self.size
-						source: "Icons/black.png"
-				size_hint: (0.1, 1)
-			Slider:
-				id: time_slider
-				canvas.before:
-					Rectangle:
-						pos: self.pos
-						size: self.size
-						source: "Icons/black.png"
-				size_hint: (1, 1)
-				min: 10
-				max: 300
-				step: 5
-				on_touch_up: root.on_touch_Slider()
-		ProgressBar:
-			id: progress_bar
-			canvas.before:
-				Rectangle:
-					pos: self.pos
-					size: self.size
-					source: "Icons/black.png"
-			max: 100
-			size_hint: (1, 0.01)
-		BoxLayout:
-			size_hint: (1, 0.5)
+			id: plot_box
+			size_hint: (None, 1)
+			size: (self.height, self.height)
+			on_touch_down: root.update_pos(args[1])
 
-			orientation: 'horizontal'
-			canvas.before:
-				Color:
-					rgb: 0/255.0, 0/255.0, 0/255.0
-				Rectangle:
-					pos: self.pos
-					size: self.size
-			TabbedPanel:
-				id: plot_menu
-				do_default_tab: False
-				tab_width: 125
-				background_image: 'Icons/black.png'
-				TabbedPanelItem:
-					text: 'Energy'
-					background_down: 'Icons/blue.png'
-					BoxLayout:
-						id: enplot_box
-				TabbedPanelItem:
-					text: 'Momentum'
-					background_down: 'Icons/blue.png'
-					BoxLayout:
-						id: hist_box
-				TabbedPanelItem:
-					text: 'Acu'
-					background_down: 'Icons/blue.png'
-					BoxLayout:
-						id: acuhist_box
-				TabbedPanelItem:
-					text: 'Entropy'
-					background_down: 'Icons/blue.png'
-					id: extraplot_tab
-					BoxLayout:
-						id: extraplot_box
-		TabbedPanel:
-			id: menu
-			size_hint: (1, 0.5)
-			do_default_tab: False
-			tab_width: 100
-			canvas.before:
-				Color:
-					rgb: 0/255.0, 0/255.0, 0/255.0
-				Rectangle:
-					pos: self.pos
-					size: self.size
-			TabbedPanelItem:
-				text: 'In a box'
-				background_down: 'Icons/blue.png'
-				id: inabox_tab
-				on_touch_up: root.on_touch_Menu()
-				BoxLayout:
+		BoxLayout:
+			orientation: 'vertical'
+			size_hint: (0.25, 1)
+			BoxLayout:
+				size_hint: (1, 0.1)
+				orientation: 'horizontal'
+				Button:
+					id: pc_button
+					#text: 'Compute'
+					background_normal: 'Icons/compute.png'
+					background_down: 'Icons/computeb.png'
+					on_press: root.playcompute()
+				Button:
+					#text: 'Pause'
+					background_normal: 'Icons/pause.png'
+					background_down: 'Icons/pauseb.png'
+					on_press: root.pause()
+				Button:
+					#text: 'Stop'
+					background_normal: 'Icons/stop.png'
+					background_down: 'Icons/stopb.png'
+					on_press: root.stop()
+				Button:
+					id: speed_button
+					background_normal: 'Icons/black.png'
+					font_size: '30sp'
+					markup: True
+					on_press: root.change_speed()
+				Button:
+					#text: 'Time Inversion'
+					background_normal: 'Icons/rewind.png'
+					background_down: 'Icons/rewindb.png'
+					on_press: root.timeinversion()
+				Button:
+					id: advanced_settings
+					background_normal: 'Icons/compute.png'
+					background_down: 'Icons/computeb.png'
+					on_press: root.advanced_settings()
+				Button:
+					id: back_to_menu
+					background_normal: 'Icons/back_to_menu.png'
+					background_down: 'Icons/back_to_menu.png'
+					on_press: root.transition_SM()
+			BoxLayout:
+				size_hint: (1, 0.1)
+				orientation: 'horizontal'
+				Label:
+					text: 'Status:'
+					canvas.before:
+						Rectangle:
+							pos: self.pos
+							size: self.size
+							source: "Icons/black.png"
+				Label:
+					id: status_label
+					text: 'Ready'
+					canvas.before:
+						Rectangle:
+							pos: self.pos
+							size: self.size
+							source: "Icons/black.png"
+				Button:
+					#text: 'Save'
+					background_normal: 'Icons/save.png'
+					background_down: 'Icons/saveb.png'
+					on_press: root.savepopup()
+				Button:
+					#text: 'Load'
+					background_normal: 'Icons/load.png'
+					background_down: 'Icons/laodb.png'
+					on_press: root.loadpopup()
+			BoxLayout:
+				size_hint: (1, 0.1)
+				orientation: 'horizontal'
+				Label:
+					text: 'Computation Time:'
+					canvas.before:
+						Rectangle:
+							pos: self.pos
+							size: self.size
+							source: "Icons/black.png"
+					size_hint: (0.4, 1)
+				Label:
+					text: str(round(time_slider.value,2))
+					canvas.before:
+						Rectangle:
+							pos: self.pos
+							size: self.size
+							source: "Icons/black.png"
+					size_hint: (0.1, 1)
+				Slider:
+					id: time_slider
+					canvas.before:
+						Rectangle:
+							pos: self.pos
+							size: self.size
+							source: "Icons/black.png"
 					size_hint: (1, 1)
-					orientation: 'vertical'
-					BoxLayout:
-						orientation: 'horizontal'
-						size_hint: (1, 0.5)
+					min: 10
+					max: 300
+					step: 5
+					on_touch_up: root.on_touch_Slider()
+			ProgressBar:
+				id: progress_bar
+				canvas.before:
+					Rectangle:
+						pos: self.pos
+						size: self.size
+						source: "Icons/black.png"
+				max: 100
+				size_hint: (1, 0.01)
+			BoxLayout:
+				size_hint: (1, 0.5)
+
+				orientation: 'horizontal'
+				canvas.before:
+					Color:
+						rgb: 0/255.0, 0/255.0, 0/255.0
+					Rectangle:
+						pos: self.pos
+						size: self.size
+				TabbedPanel:
+					id: plot_menu
+					do_default_tab: False
+					tab_width: 125
+					background_image: 'Icons/black.png'
+					TabbedPanelItem:
+						text: 'Energy'
+						background_down: 'Icons/blue.png'
 						BoxLayout:
-							orientation: 'vertical'
+							id: enplot_box
+					TabbedPanelItem:
+						text: 'Momentum'
+						background_down: 'Icons/blue.png'
+						BoxLayout:
+							id: hist_box
+					TabbedPanelItem:
+						text: 'Acu'
+						background_down: 'Icons/blue.png'
+						BoxLayout:
+							id: acuhist_box
+					TabbedPanelItem:
+						text: 'Entropy'
+						background_down: 'Icons/blue.png'
+						id: extraplot_tab
+						BoxLayout:
+							id: extraplot_box
+			TabbedPanel:
+				id: menu
+				size_hint: (1, 0.5)
+				do_default_tab: False
+				tab_width: 100
+				canvas.before:
+					Color:
+						rgb: 0/255.0, 0/255.0, 0/255.0
+					Rectangle:
+						pos: self.pos
+						size: self.size
+				TabbedPanelItem:
+					text: 'In a box'
+					background_down: 'Icons/blue.png'
+					id: inabox_tab
+					on_touch_up: root.on_touch_Menu()
+					BoxLayout:
+						size_hint: (1, 1)
+						orientation: 'vertical'
+						BoxLayout:
+							orientation: 'horizontal'
+							size_hint: (1, 0.5)
+							BoxLayout:
+								orientation: 'vertical'
+								size_hint: (1, 1)
+								canvas.before:
+									Color:
+										rgb: 0/255.0, 0/255.0, 0/255.0
+									Rectangle:
+										pos: self.pos
+										size: self.size
+								BoxLayout:
+									orientation: 'horizontal'
+									size_hint: (1, 0.1)
+									Label:
+										text: 'm'
+										markup: True
+										size_hint: (0.2, 1)
+									Label:
+										text: str(round(mass_slider.value,2))
+										size_hint: (0.2, 1)
+									Slider:
+										id: mass_slider
+										size_hint: (1, 1)
+										min: 1
+										max: 1
+										step: 0.5
+								BoxLayout:
+									orientation: 'horizontal'
+									size_hint: (1, 0.1)
+									Label:
+										text: 'R'
+										markup: True
+										size_hint: (0.2, 1)
+									Label:
+										text: str(round(r_slider.value,2))
+										size_hint: (0.2, 1)
+									Slider:
+										id: r_slider
+										size_hint: (1, 1)
+										min: -100
+										max: 100
+										step: 1
+						TabbedPanel:
+							id: inabox_menu
 							size_hint: (1, 1)
+							do_default_tab: False
 							canvas.before:
 								Color:
 									rgb: 0/255.0, 0/255.0, 0/255.0
 								Rectangle:
 									pos: self.pos
 									size: self.size
-							BoxLayout:
-								orientation: 'horizontal'
-								size_hint: (1, 0.1)
-								Label:
-									text: 'm'
-									markup: True
-									size_hint: (0.2, 1)
-								Label:
-									text: str(round(mass_slider.value,2))
-									size_hint: (0.2, 1)
-								Slider:
-									id: mass_slider
+							tab_width: 115
+							TabbedPanelItem:
+								text: 'Random Lattice'
+								background_down: 'Icons/blue.png'
+								id: rl_tab
+								on_touch_up: root.on_touch_Submenu()
+								BoxLayout:
+									orientation: 'vertical'
 									size_hint: (1, 1)
-									min: 1
-									max: 1
-									step: 0.5
-							BoxLayout:
-								orientation: 'horizontal'
-								size_hint: (1, 0.1)
-								Label:
-									text: 'R'
-									markup: True
-									size_hint: (0.2, 1)
-								Label:
-									text: str(round(r_slider.value,2))
-									size_hint: (0.2, 1)
-								Slider:
-									id: r_slider
+									canvas.before:
+										Color:
+											rgb: 0/255.0, 0/255.0, 0/255.0
+										Rectangle:
+											pos: self.pos
+											size: self.size
+									BoxLayout:
+										orientation: 'horizontal'
+										Label:
+											text: 'N'
+											markup: True
+											size_hint: (0.2, 1)
+										Label:
+											text: str(round(nr_slider.value))
+											size_hint: (0.2, 1)
+										Slider:
+											id: nr_slider
+											size_hint: (1, 1)
+											min: 1
+											max: 22
+											step: 1
+											on_touch_up: root.on_touch_Slider()
+							TabbedPanelItem:
+								text: 'Subsystems'
+								id: sbs_tab
+								background_down: 'Icons/blue.png'
+								on_touch_up: root.on_touch_Submenu()
+								BoxLayout:
+									orientation: 'vertical'
 									size_hint: (1, 1)
-									min: -100
-									max: 100
-									step: 1
-					TabbedPanel:
-						id: inabox_menu
+									canvas.before:
+										Color:
+											rgb: 0/255.0, 0/255.0, 0/255.0
+										Rectangle:
+											pos: self.pos
+											size: self.size
+									BoxLayout:
+										orientation: 'horizontal'
+										Label:
+											text: 'N[sub]1[/sub]'
+											markup: True
+											size_hint: (0.2, 1)
+										Label:
+											text: str(round(n1_slider.value,2))
+											size_hint: (0.2, 1)
+										Slider:
+											id: n1_slider
+											size_hint: (1, 1)
+											min: 1
+											max: 10
+											step: 1
+											on_touch_up: root.on_touch_Slider()
+									BoxLayout:
+										orientation: 'horizontal'
+										Label:
+											text: 'N[sub]2[/sub]'
+											markup: True
+											size_hint: (0.2, 1)
+										Label:
+											text: str(round(n2_slider.value,2))
+											size_hint: (0.2, 1)
+										Slider:
+											id: n2_slider
+											size_hint: (1, 1)
+											min: 1
+											max: 10
+											step: 1
+											on_touch_up: root.on_touch_Slider()
+							TabbedPanelItem:
+								text: 'Brownian'
+								id: brw_tab
+								background_down: 'Icons/blue.png'
+								on_touch_up: root.on_touch_Submenu()
+								BoxLayout:
+									orientation: 'vertical'
+									size_hint: (1, 1)
+									canvas.before:
+										Color:
+											rgb: 0/255.0, 0/255.0, 0/255.0
+										Rectangle:
+											pos: self.pos
+											size: self.size
+									BoxLayout:
+										orientation: 'horizontal'
+										Label:
+											text: 'N[sub]big[/sub]'
+											markup: True
+											size_hint: (0.2, 1)
+										Label:
+											text: str(round(nbig_slider.value,2))
+											size_hint: (0.2, 1)
+										Slider:
+											id: nbig_slider
+											size_hint: (1, 1)
+											min: 1
+											max: 3
+											step: 1
+											on_touch_up: root.on_touch_Slider()
+									BoxLayout:
+										orientation: 'horizontal'
+										Label:
+											text: 'N[sub]small[/sub]'
+											markup: True
+											size_hint: (0.2, 1)
+										Label:
+											text: str(round(nsmall_slider.value,2))
+											size_hint: (0.2, 1)
+										Slider:
+											id: nsmall_slider
+											size_hint: (1, 1)
+											min: 2
+											max: 14
+											step: 2
+											on_touch_up: root.on_touch_Slider()
+				TabbedPanelItem:
+					text: 'Free!'
+					id: free_tab
+					background_down: 'Icons/blue.png'
+					on_touch_up: root.on_touch_Menu()
+					BoxLayout:
 						size_hint: (1, 1)
-						do_default_tab: False
+						orientation: 'vertical'
 						canvas.before:
 							Color:
 								rgb: 0/255.0, 0/255.0, 0/255.0
 							Rectangle:
 								pos: self.pos
 								size: self.size
-						tab_width: 115
-						TabbedPanelItem:
-							text: 'Random Lattice'
-							background_down: 'Icons/blue.png'
-							id: rl_tab
-							on_touch_up: root.on_touch_Submenu()
-							BoxLayout:
-								orientation: 'vertical'
-								size_hint: (1, 1)
-								canvas.before:
-									Color:
-										rgb: 0/255.0, 0/255.0, 0/255.0
-									Rectangle:
-										pos: self.pos
-										size: self.size
-								BoxLayout:
-									orientation: 'horizontal'
-									Label:
-										text: 'N'
-										markup: True
-										size_hint: (0.2, 1)
-									Label:
-										text: str(round(nr_slider.value))
-										size_hint: (0.2, 1)
-									Slider:
-										id: nr_slider
-										size_hint: (1, 1)
-										min: 1
-										max: 22
-										step: 1
-										on_touch_up: root.on_touch_Slider()
-						TabbedPanelItem:
-							text: 'Subsystems'
-							id: sbs_tab
-							background_down: 'Icons/blue.png'
-							on_touch_up: root.on_touch_Submenu()
-							BoxLayout:
-								orientation: 'vertical'
-								size_hint: (1, 1)
-								canvas.before:
-									Color:
-										rgb: 0/255.0, 0/255.0, 0/255.0
-									Rectangle:
-										pos: self.pos
-										size: self.size
-								BoxLayout:
-									orientation: 'horizontal'
-									Label:
-										text: 'N[sub]1[/sub]'
-										markup: True
-										size_hint: (0.2, 1)
-									Label:
-										text: str(round(n1_slider.value,2))
-										size_hint: (0.2, 1)
-									Slider:
-										id: n1_slider
-										size_hint: (1, 1)
-										min: 1
-										max: 10
-										step: 1
-										on_touch_up: root.on_touch_Slider()
-								BoxLayout:
-									orientation: 'horizontal'
-									Label:
-										text: 'N[sub]2[/sub]'
-										markup: True
-										size_hint: (0.2, 1)
-									Label:
-										text: str(round(n2_slider.value,2))
-										size_hint: (0.2, 1)
-									Slider:
-										id: n2_slider
-										size_hint: (1, 1)
-										min: 1
-										max: 10
-										step: 1
-										on_touch_up: root.on_touch_Slider()
-						TabbedPanelItem:
-							text: 'Brownian'
-							id: brw_tab
-							background_down: 'Icons/blue.png'
-							on_touch_up: root.on_touch_Submenu()
-							BoxLayout:
-								orientation: 'vertical'
-								size_hint: (1, 1)
-								canvas.before:
-									Color:
-										rgb: 0/255.0, 0/255.0, 0/255.0
-									Rectangle:
-										pos: self.pos
-										size: self.size
-								BoxLayout:
-									orientation: 'horizontal'
-									Label:
-										text: 'N[sub]big[/sub]'
-										markup: True
-										size_hint: (0.2, 1)
-									Label:
-										text: str(round(nbig_slider.value,2))
-										size_hint: (0.2, 1)
-									Slider:
-										id: nbig_slider
-										size_hint: (1, 1)
-										min: 1
-										max: 3
-										step: 1
-										on_touch_up: root.on_touch_Slider()
-								BoxLayout:
-									orientation: 'horizontal'
-									Label:
-										text: 'N[sub]small[/sub]'
-										markup: True
-										size_hint: (0.2, 1)
-									Label:
-										text: str(round(nsmall_slider.value,2))
-										size_hint: (0.2, 1)
-									Slider:
-										id: nsmall_slider
-										size_hint: (1, 1)
-										min: 2
-										max: 14
-										step: 2
-										on_touch_up: root.on_touch_Slider()
-			TabbedPanelItem:
-				text: 'Free!'
-				id: free_tab
-				background_down: 'Icons/blue.png'
-				on_touch_up: root.on_touch_Menu()
-				BoxLayout:
-					size_hint: (1, 1)
-					orientation: 'vertical'
-					canvas.before:
-						Color:
-							rgb: 0/255.0, 0/255.0, 0/255.0
-						Rectangle:
-							pos: self.pos
-							size: self.size
-					BoxLayout:
-						orientation: 'horizontal'
-						size_hint: (1, 0.5)
 						BoxLayout:
-							orientation: 'vertical'
-							size_hint: (1, 1)
-							BoxLayout:
-								orientation: 'horizontal'
-								size_hint: (1, 0.1)
-								Label:
-									text: 'm'
-									markup: True
-									size_hint: (0.2, 1)
-								Label:
-									text: str(round(mass_slider2.value,2))
-									size_hint: (0.2, 1)
-								Slider:
-									id: mass_slider2
-									size_hint: (1, 1)
-									min: 1
-									max: 1
-									step: 0.5
-							BoxLayout:
-								orientation: 'horizontal'
-								size_hint: (1, 0.1)
-								Label:
-									text: 'R'
-									markup: True
-									size_hint: (0.2, 1)
-								Label:
-									text: str(round(r_slider2.value,2))
-									size_hint: (0.2, 1)
-								Slider:
-									id: r_slider2
-									size_hint: (1, 1)
-									min: -100
-									max: 100
-									step: 1
-					TabbedPanel:
-						id: free_menu
-						size_hint: (1, 1)
-						do_default_tab: False
-						background_image: 'Icons/black.png'
-						tab_width: 115
-						TabbedPanelItem:
-							text: 'Random Lattice'
-							background_down: 'Icons/blue.png'
-							id: rl_tab2
-							on_touch_up: root.on_touch_Submenu()
+							orientation: 'horizontal'
+							size_hint: (1, 0.5)
 							BoxLayout:
 								orientation: 'vertical'
 								size_hint: (1, 1)
 								BoxLayout:
 									orientation: 'horizontal'
+									size_hint: (1, 0.1)
 									Label:
-										text: 'N'
+										text: 'm'
 										markup: True
 										size_hint: (0.2, 1)
 									Label:
-										text: str(round(nr_slider2.value))
+										text: str(round(mass_slider2.value,2))
 										size_hint: (0.2, 1)
 									Slider:
-										id: nr_slider2
-										size_hint: (1, 1)
-										min: 1
-										max: 30
-										step: 1
-										on_touch_up: root.on_touch_Slider()
-						TabbedPanelItem:
-							text: 'Subsystems'
-							id: sbs_tab2
-							background_down: 'Icons/blue.png'
-							on_touch_up: root.on_touch_Slider()
-							BoxLayout:
-								orientation: 'vertical'
-								size_hint: (1, 1)
-								BoxLayout:
-									orientation: 'horizontal'
-									Label:
-										text: 'N[sub]1[/sub]'
-										markup: True
-										size_hint: (0.2, 1)
-									Label:
-										text: str(round(n1_slider2.value,2))
-										size_hint: (0.2, 1)
-									Slider:
-										id: n1_slider2
-										size_hint: (1, 1)
-										min: 1
-										max: 10
-										step: 1
-										on_touch_up: root.on_touch_Slider()
-								BoxLayout:
-									orientation: 'horizontal'
-									Label:
-										text: 'N[sub]2[/sub]'
-										markup: True
-										size_hint: (0.2, 1)
-									Label:
-										text: str(round(n2_slider2.value,2))
-										size_hint: (0.2, 1)
-									Slider:
-										id: n2_slider2
-										size_hint: (1, 1)
-										min: 1
-										max: 10
-										step: 1
-										on_touch_up: root.on_touch_Slider()
-						TabbedPanelItem:
-							text: 'Brownian'
-							id: brw_tab2
-							background_down: 'Icons/blue.png'
-							on_touch_up: root.on_touch_Slider()
-							BoxLayout:
-								orientation: 'vertical'
-								size_hint: (1, 1)
-								BoxLayout:
-									orientation: 'horizontal'
-									Label:
-										text: 'N[sub]big[/sub]'
-										markup: True
-										size_hint: (0.2, 1)
-									Label:
-										text: str(round(nbig_slider2.value,2))
-										size_hint: (0.2, 1)
-									Slider:
-										id: nbig_slider2
-										size_hint: (1, 1)
-										min: 1
-										max: 3
-										step: 1
-										on_touch_up: root.on_touch_Slider()
-								BoxLayout:
-									orientation: 'horizontal'
-									Label:
-										text: 'N[sub]small[/sub]'
-										markup: True
-										size_hint: (0.2, 1)
-									Label:
-										text: str(round(nsmall_slider2.value,2))
-										size_hint: (0.2, 1)
-									Slider:
-										id: nsmall_slider2
-										size_hint: (1, 1)
-										min: 2
-										max: 14
-										step: 2
-										on_touch_up: root.on_touch_Slider()
-			TabbedPanelItem:
-				text: 'Walls'
-				id: wall_tab
-				background_down: 'Icons/blue.png'
-				on_touch_up: root.on_touch_Menu()
-				BoxLayout:
-					size_hint: (1, 1)
-					orientation: 'vertical'
-					canvas.before:
-						Color:
-							rgb: 0/255.0, 0/255.0, 0/255.0
-						Rectangle:
-							pos: self.pos
-							size: self.size
-					BoxLayout:
-						orientation: 'horizontal'
-						size_hint: (1, 0.5)
-						BoxLayout:
-							orientation: 'vertical'
-							size_hint: (1, 1)
-							BoxLayout:
-								orientation: 'horizontal'
-								size_hint: (1, 0.1)
-								Label:
-									text: 'Wall position'
-									markup: True
-									size_hint: (0.4, 1)
-								Label:
-									text: str(round(wall_slider.value,2))
-									size_hint: (0.2, 1)
-								Slider:
-									id: wall_slider
-									size_hint: (1, 1)
-									min: -10
-									max: 50
-									step: 1
-							BoxLayout:
-								orientation: 'horizontal'
-								size_hint: (1, 0.1)
-								Label:
-									text: 'Hole size'
-									markup: True
-									size_hint: (0.4, 1)
-								Label:
-									text: str(round(hole_slider.value,2))
-									size_hint: (0.2, 1)
-								Slider:
-									id: hole_slider
-									size_hint: (1, 1)
-									min: 8
-									max: 60
-									step: 1
-									value: 20
-					TabbedPanel:
-						id: wall_menu
-						size_hint: (1, 1)
-						do_default_tab: False
-						background_image: 'Icons/black.png'
-						tab_width: 115
-						TabbedPanelItem:
-							text: 'Random Lattice'
-							id: rl_tab3
-							background_down: 'Icons/blue.png'
-							on_touch_up: root.on_touch_Submenu()
-							BoxLayout:
-								orientation: 'vertical'
-								size_hint: (1, 1)
-								BoxLayout:
-									orientation: 'horizontal'
-									Label:
-										text: 'N'
-										markup: True
-										size_hint: (0.2, 1)
-									Label:
-										text: str(round(nr_slider3.value))
-										size_hint: (0.2, 1)
-									Slider:
-										id: nr_slider3
-										size_hint: (1, 1)
-										min: 1
-										max: 16
-										step: 1
-										on_touch_up: root.on_touch_Slider()
-						TabbedPanelItem:
-							text: 'Subsystems'
-							id: sbs_tab3
-							background_down: 'Icons/blue.png'
-							on_touch_up: root.on_touch_Slider()
-							BoxLayout:
-								orientation: 'vertical'
-								size_hint: (1, 1)
-								BoxLayout:
-									orientation: 'horizontal'
-									Label:
-										text: 'N[sub]1[/sub]'
-										markup: True
-										size_hint: (0.2, 1)
-									Label:
-										text: str(round(n1_slider3.value,2))
-										size_hint: (0.2, 1)
-									Slider:
-										id: n1_slider3
-										size_hint: (1, 1)
-										min: 1
-										max: 10
-										step: 1
-										on_touch_up: root.on_touch_Slider()
-								BoxLayout:
-									orientation: 'horizontal'
-									Label:
-										text: 'N[sub]2[/sub]'
-										markup: True
-										size_hint: (0.2, 1)
-									Label:
-										text: str(round(n2_slider3.value,2))
-										size_hint: (0.2, 1)
-									Slider:
-										id: n2_slider3
-										size_hint: (1, 1)
-										min: 1
-										max: 10
-										step: 1
-										on_touch_up: root.on_touch_Slider()
-						TabbedPanelItem:
-							text: 'Brownian'
-							id: brw_tab3
-							background_down: 'Icons/blue.png'
-							on_touch_up: root.on_touch_Slider()
-							BoxLayout:
-								orientation: 'vertical'
-								size_hint: (1, 1)
-								BoxLayout:
-									orientation: 'horizontal'
-									Label:
-										text: 'N[sub]big[/sub]'
-										markup: True
-										size_hint: (0.2, 1)
-									Label:
-										text: str(round(nbig_slider3.value,2))
-										size_hint: (0.2, 1)
-									Slider:
-										id: nbig_slider3
+										id: mass_slider2
 										size_hint: (1, 1)
 										min: 1
 										max: 1
-										step: 1
-										on_touch_up: root.on_touch_Slider()
+										step: 0.5
 								BoxLayout:
 									orientation: 'horizontal'
+									size_hint: (1, 0.1)
 									Label:
-										text: 'N[sub]small[/sub]'
+										text: 'R'
 										markup: True
 										size_hint: (0.2, 1)
 									Label:
-										text: str(round(nsmall_slider3.value,2))
+										text: str(round(r_slider2.value,2))
 										size_hint: (0.2, 1)
 									Slider:
-										id: nsmall_slider3
+										id: r_slider2
 										size_hint: (1, 1)
-										min: 2
-										max: 10
-										step: 2
-										on_touch_up: root.on_touch_Slider()
+										min: -100
+										max: 100
+										step: 1
+						TabbedPanel:
+							id: free_menu
+							size_hint: (1, 1)
+							do_default_tab: False
+							background_image: 'Icons/black.png'
+							tab_width: 115
+							TabbedPanelItem:
+								text: 'Random Lattice'
+								background_down: 'Icons/blue.png'
+								id: rl_tab2
+								on_touch_up: root.on_touch_Submenu()
+								BoxLayout:
+									orientation: 'vertical'
+									size_hint: (1, 1)
+									BoxLayout:
+										orientation: 'horizontal'
+										Label:
+											text: 'N'
+											markup: True
+											size_hint: (0.2, 1)
+										Label:
+											text: str(round(nr_slider2.value))
+											size_hint: (0.2, 1)
+										Slider:
+											id: nr_slider2
+											size_hint: (1, 1)
+											min: 1
+											max: 30
+											step: 1
+											on_touch_up: root.on_touch_Slider()
+							TabbedPanelItem:
+								text: 'Subsystems'
+								id: sbs_tab2
+								background_down: 'Icons/blue.png'
+								on_touch_up: root.on_touch_Slider()
+								BoxLayout:
+									orientation: 'vertical'
+									size_hint: (1, 1)
+									BoxLayout:
+										orientation: 'horizontal'
+										Label:
+											text: 'N[sub]1[/sub]'
+											markup: True
+											size_hint: (0.2, 1)
+										Label:
+											text: str(round(n1_slider2.value,2))
+											size_hint: (0.2, 1)
+										Slider:
+											id: n1_slider2
+											size_hint: (1, 1)
+											min: 1
+											max: 10
+											step: 1
+											on_touch_up: root.on_touch_Slider()
+									BoxLayout:
+										orientation: 'horizontal'
+										Label:
+											text: 'N[sub]2[/sub]'
+											markup: True
+											size_hint: (0.2, 1)
+										Label:
+											text: str(round(n2_slider2.value,2))
+											size_hint: (0.2, 1)
+										Slider:
+											id: n2_slider2
+											size_hint: (1, 1)
+											min: 1
+											max: 10
+											step: 1
+											on_touch_up: root.on_touch_Slider()
+							TabbedPanelItem:
+								text: 'Brownian'
+								id: brw_tab2
+								background_down: 'Icons/blue.png'
+								on_touch_up: root.on_touch_Slider()
+								BoxLayout:
+									orientation: 'vertical'
+									size_hint: (1, 1)
+									BoxLayout:
+										orientation: 'horizontal'
+										Label:
+											text: 'N[sub]big[/sub]'
+											markup: True
+											size_hint: (0.2, 1)
+										Label:
+											text: str(round(nbig_slider2.value,2))
+											size_hint: (0.2, 1)
+										Slider:
+											id: nbig_slider2
+											size_hint: (1, 1)
+											min: 1
+											max: 3
+											step: 1
+											on_touch_up: root.on_touch_Slider()
+									BoxLayout:
+										orientation: 'horizontal'
+										Label:
+											text: 'N[sub]small[/sub]'
+											markup: True
+											size_hint: (0.2, 1)
+										Label:
+											text: str(round(nsmall_slider2.value,2))
+											size_hint: (0.2, 1)
+										Slider:
+											id: nsmall_slider2
+											size_hint: (1, 1)
+											min: 2
+											max: 14
+											step: 2
+											on_touch_up: root.on_touch_Slider()
+				TabbedPanelItem:
+					text: 'Walls'
+					id: wall_tab
+					background_down: 'Icons/blue.png'
+					on_touch_up: root.on_touch_Menu()
+					BoxLayout:
+						size_hint: (1, 1)
+						orientation: 'vertical'
+						canvas.before:
+							Color:
+								rgb: 0/255.0, 0/255.0, 0/255.0
+							Rectangle:
+								pos: self.pos
+								size: self.size
+						BoxLayout:
+							orientation: 'horizontal'
+							size_hint: (1, 0.5)
+							BoxLayout:
+								orientation: 'vertical'
+								size_hint: (1, 1)
+								BoxLayout:
+									orientation: 'horizontal'
+									size_hint: (1, 0.1)
+									Label:
+										text: 'Wall position'
+										markup: True
+										size_hint: (0.4, 1)
+									Label:
+										text: str(round(wall_slider.value,2))
+										size_hint: (0.2, 1)
+									Slider:
+										id: wall_slider
+										size_hint: (1, 1)
+										min: -10
+										max: 50
+										step: 1
+								BoxLayout:
+									orientation: 'horizontal'
+									size_hint: (1, 0.1)
+									Label:
+										text: 'Hole size'
+										markup: True
+										size_hint: (0.4, 1)
+									Label:
+										text: str(round(hole_slider.value,2))
+										size_hint: (0.2, 1)
+									Slider:
+										id: hole_slider
+										size_hint: (1, 1)
+										min: 8
+										max: 60
+										step: 1
+										value: 20
+						TabbedPanel:
+							id: wall_menu
+							size_hint: (1, 1)
+							do_default_tab: False
+							background_image: 'Icons/black.png'
+							tab_width: 115
+							TabbedPanelItem:
+								text: 'Random Lattice'
+								id: rl_tab3
+								background_down: 'Icons/blue.png'
+								on_touch_up: root.on_touch_Submenu()
+								BoxLayout:
+									orientation: 'vertical'
+									size_hint: (1, 1)
+									BoxLayout:
+										orientation: 'horizontal'
+										Label:
+											text: 'N'
+											markup: True
+											size_hint: (0.2, 1)
+										Label:
+											text: str(round(nr_slider3.value))
+											size_hint: (0.2, 1)
+										Slider:
+											id: nr_slider3
+											size_hint: (1, 1)
+											min: 1
+											max: 16
+											step: 1
+											on_touch_up: root.on_touch_Slider()
+							TabbedPanelItem:
+								text: 'Subsystems'
+								id: sbs_tab3
+								background_down: 'Icons/blue.png'
+								on_touch_up: root.on_touch_Slider()
+								BoxLayout:
+									orientation: 'vertical'
+									size_hint: (1, 1)
+									BoxLayout:
+										orientation: 'horizontal'
+										Label:
+											text: 'N[sub]1[/sub]'
+											markup: True
+											size_hint: (0.2, 1)
+										Label:
+											text: str(round(n1_slider3.value,2))
+											size_hint: (0.2, 1)
+										Slider:
+											id: n1_slider3
+											size_hint: (1, 1)
+											min: 1
+											max: 10
+											step: 1
+											on_touch_up: root.on_touch_Slider()
+									BoxLayout:
+										orientation: 'horizontal'
+										Label:
+											text: 'N[sub]2[/sub]'
+											markup: True
+											size_hint: (0.2, 1)
+										Label:
+											text: str(round(n2_slider3.value,2))
+											size_hint: (0.2, 1)
+										Slider:
+											id: n2_slider3
+											size_hint: (1, 1)
+											min: 1
+											max: 10
+											step: 1
+											on_touch_up: root.on_touch_Slider()
+							TabbedPanelItem:
+								text: 'Brownian'
+								id: brw_tab3
+								background_down: 'Icons/blue.png'
+								on_touch_up: root.on_touch_Slider()
+								BoxLayout:
+									orientation: 'vertical'
+									size_hint: (1, 1)
+									BoxLayout:
+										orientation: 'horizontal'
+										Label:
+											text: 'N[sub]big[/sub]'
+											markup: True
+											size_hint: (0.2, 1)
+										Label:
+											text: str(round(nbig_slider3.value,2))
+											size_hint: (0.2, 1)
+										Slider:
+											id: nbig_slider3
+											size_hint: (1, 1)
+											min: 1
+											max: 1
+											step: 1
+											on_touch_up: root.on_touch_Slider()
+									BoxLayout:
+										orientation: 'horizontal'
+										Label:
+											text: 'N[sub]small[/sub]'
+											markup: True
+											size_hint: (0.2, 1)
+										Label:
+											text: str(round(nsmall_slider3.value,2))
+											size_hint: (0.2, 1)
+										Slider:
+											id: nsmall_slider3
+											size_hint: (1, 1)
+											min: 2
+											max: 10
+											step: 2
+											on_touch_up: root.on_touch_Slider()
+
+<GameScreen>:
+	name: 'game'
+
+	plotbox: plot_box
+	playbutton: play_button
+	g_to_m: g_to_m_id
+
+	BoxLayout:
+		BoxLayout:
+			id: plot_box
+			size_hint: (None, 1)
+			size: (self.height, self.height)
+			on_touch_down: root.update_pos(args[1])
+
+		BoxLayout:
+			orientation: 'vertical'
+			size_hint: (0.25, 1)
+			BoxLayout:
+				size_hint: (1, 0.1)
+				orientation: 'horizontal'
+				Button:
+					id: g_to_m_id
+					background_normal: 'Icons/back_to_menu.png'
+					background_down: 'Icons/back_to_menu.png'
+					on_press: root.transition_GM()
+				Button:
+					id: play_button
+					#text: 'Play'
+					background_normal: 'Icons/play.png'
+					background_down: 'Icons/playb.png'
+					on_press: root.play_button()
+				Button:
+					#text: 'Pause'
+					background_normal: 'Icons/pause.png'
+					background_down: 'Icons/pauseb.png'
+					on_press: root.pause()
+			BoxLayout:
+				size_hint: (1, 0.1)
+				orientation: 'horizontal'
+			BoxLayout:
+				size_hint: (1, 0.1)
+				orientation: 'horizontal'
+			BoxLayout:
+				size_hint: (1, 0.1)
+				orientation: 'horizontal'
+
 <savewindow>:
 	text_input: text_input
 	BoxLayout:
@@ -780,11 +924,13 @@
 	boxlength_slider: boxlengthslider
 	dt_slider: dtslider
 	BoxLayout:
+		pos_hint: {'right': 0.9}
+		size_hint: (0.9,1)
 		orientation: 'vertical'
 		BoxLayout:
 			orientation: 'horizontal'
 			Label:
-				text: 'R[sub]big[/sub]'
+				text: 'R[sub]big[/sub]: '
 				markup: True
 				size_hint: (0.15, 1)
 			Label:
@@ -800,7 +946,7 @@
 		BoxLayout:
 			orientation: 'horizontal'
 			Label:
-				text: 'Simulation length'
+				text: 'Simulation length: '
 				markup: True
 				size_hint: (0.15, 1)
 			Label:
@@ -808,7 +954,7 @@
 				size_hint: (0.05, 1)
 			Slider:
 				id: boxlengthslider
-				size_hint: (0.5, 1)
+				size_hint: (0.45, 1)
 				min: 200
 				max: 400
 				step: 10
@@ -816,11 +962,11 @@
 			Label:
 				text: 'Angstroms (10[sup]-10[/sup]m)'
 				markup: True
-				size_hint: (0.1, 1)
+				size_hint: (0.15, 1)
 		BoxLayout:
 			orientation: 'horizontal'
 			Label:
-				text: 'Time step (dt)'
+				text: 'Time step (dt): '
 				markup: True
 				size_hint: (0.15, 1)
 			Label:
@@ -829,11 +975,12 @@
 			Slider:
 				id: dtslider
 				size_hint: (0.5, 1)
-				min: 0.002
+				min: 0.0001
 				max: 0.02
-				step: 0.001
+				step: 0.005
 				on_touch_up: root.change_settings()
 	BoxLayout:
+		pos_hint: {'right': 1}
 		orientation: 'horizontal'
 		size_hint: (1, None)
 		height: 60
