@@ -14,7 +14,7 @@
 		padding: [root.width/3,0]
 		Image:
 			id: QM_image_id
-			source: 'Icons/portada.png'
+			source: 'icons/portada.png'
 			allow_stretch: True
 			size_hint_y: 1
 
@@ -85,7 +85,7 @@
 		Image:
 			id: UB_logo_id
 			size_hint_y: 0.75
-			source: 'Icons/logo_ub-transparente.png'
+			source: 'icons/logo_ub-transparente.png'
 			size_hint_x: 0.6
 			pos_hint: {'center_x': 0.5, 'center_y': 0.75}
 			allow_stretch: True
@@ -172,39 +172,39 @@
 				Button:
 					id: pc_button
 					#text: 'Compute'
-					background_normal: 'Icons/compute.png'
-					background_down: 'Icons/computeb.png'
+					background_normal: 'icons/compute.png'
+					background_down: 'icons/computeb.png'
 					on_press: root.playcompute()
 				Button:
 					#text: 'Pause'
-					background_normal: 'Icons/pause.png'
-					background_down: 'Icons/pauseb.png'
+					background_normal: 'icons/pause.png'
+					background_down: 'icons/pauseb.png'
 					on_press: root.pause()
 				Button:
 					#text: 'Stop'
-					background_normal: 'Icons/stop.png'
-					background_down: 'Icons/stopb.png'
+					background_normal: 'icons/stop.png'
+					background_down: 'icons/stopb.png'
 					on_press: root.stop()
 				Button:
 					id: speed_button
-					background_normal: 'Icons/black.png'
+					background_normal: 'icons/black.png'
 					font_size: '30sp'
 					markup: True
 					on_press: root.change_speed()
 				Button:
 					#text: 'Time Inversion'
-					background_normal: 'Icons/rewind.png'
-					background_down: 'Icons/rewindb.png'
+					background_normal: 'icons/rewind.png'
+					background_down: 'icons/rewindb.png'
 					on_press: root.timeinversion()
 				Button:
 					id: advanced_settings
-					background_normal: 'Icons/compute.png'
-					background_down: 'Icons/computeb.png'
+					background_normal: 'icons/compute.png'
+					background_down: 'icons/computeb.png'
 					on_press: root.advanced_settings()
 				Button:
 					id: back_to_menu
-					background_normal: 'Icons/back_to_menu.png'
-					background_down: 'Icons/back_to_menu.png'
+					background_normal: 'icons/back_to_menu.png'
+					background_down: 'icons/back_to_menu.png'
 					on_press: root.transition_SM()
 			BoxLayout:
 				size_hint: (1, 0.1)
@@ -215,7 +215,7 @@
 						Rectangle:
 							pos: self.pos
 							size: self.size
-							source: "Icons/black.png"
+							source: "icons/black.png"
 				Label:
 					id: status_label
 					text: 'Ready'
@@ -223,16 +223,16 @@
 						Rectangle:
 							pos: self.pos
 							size: self.size
-							source: "Icons/black.png"
+							source: "icons/black.png"
 				Button:
 					#text: 'Save'
-					background_normal: 'Icons/save.png'
-					background_down: 'Icons/saveb.png'
+					background_normal: 'icons/save.png'
+					background_down: 'icons/saveb.png'
 					on_press: root.savepopup()
 				Button:
 					#text: 'Load'
-					background_normal: 'Icons/load.png'
-					background_down: 'Icons/laodb.png'
+					background_normal: 'icons/load.png'
+					background_down: 'icons/laodb.png'
 					on_press: root.loadpopup()
 			BoxLayout:
 				size_hint: (1, 0.1)
@@ -243,7 +243,7 @@
 						Rectangle:
 							pos: self.pos
 							size: self.size
-							source: "Icons/black.png"
+							source: "icons/black.png"
 					size_hint: (0.4, 1)
 				Label:
 					text: str(round(time_slider.value,2))
@@ -251,7 +251,7 @@
 						Rectangle:
 							pos: self.pos
 							size: self.size
-							source: "Icons/black.png"
+							source: "icons/black.png"
 					size_hint: (0.1, 1)
 				Slider:
 					id: time_slider
@@ -259,7 +259,7 @@
 						Rectangle:
 							pos: self.pos
 							size: self.size
-							source: "Icons/black.png"
+							source: "icons/black.png"
 					size_hint: (1, 1)
 					min: 10
 					max: 300
@@ -271,7 +271,7 @@
 					Rectangle:
 						pos: self.pos
 						size: self.size
-						source: "Icons/black.png"
+						source: "icons/black.png"
 				max: 100
 				size_hint: (1, 0.01)
 			BoxLayout:
@@ -288,25 +288,25 @@
 					id: plot_menu
 					do_default_tab: False
 					tab_width: 125
-					background_image: 'Icons/black.png'
+					background_image: 'icons/black.png'
 					TabbedPanelItem:
 						text: 'Energy'
-						background_down: 'Icons/blue.png'
+						background_down: 'icons/blue.png'
 						BoxLayout:
 							id: enplot_box
 					TabbedPanelItem:
 						text: 'Momentum'
-						background_down: 'Icons/blue.png'
+						background_down: 'icons/blue.png'
 						BoxLayout:
 							id: hist_box
 					TabbedPanelItem:
 						text: 'Acu'
-						background_down: 'Icons/blue.png'
+						background_down: 'icons/blue.png'
 						BoxLayout:
 							id: acuhist_box
 					TabbedPanelItem:
 						text: 'Entropy'
-						background_down: 'Icons/blue.png'
+						background_down: 'icons/blue.png'
 						id: extraplot_tab
 						BoxLayout:
 							id: extraplot_box
@@ -323,7 +323,7 @@
 						size: self.size
 				TabbedPanelItem:
 					text: 'In a box'
-					background_down: 'Icons/blue.png'
+					background_down: 'icons/blue.png'
 					id: inabox_tab
 					on_touch_up: root.on_touch_Menu()
 					BoxLayout:
@@ -386,7 +386,7 @@
 							tab_width: 115
 							TabbedPanelItem:
 								text: 'Random Lattice'
-								background_down: 'Icons/blue.png'
+								background_down: 'icons/blue.png'
 								id: rl_tab
 								on_touch_up: root.on_touch_Submenu()
 								BoxLayout:
@@ -417,7 +417,7 @@
 							TabbedPanelItem:
 								text: 'Subsystems'
 								id: sbs_tab
-								background_down: 'Icons/blue.png'
+								background_down: 'icons/blue.png'
 								on_touch_up: root.on_touch_Submenu()
 								BoxLayout:
 									orientation: 'vertical'
@@ -463,7 +463,7 @@
 							TabbedPanelItem:
 								text: 'Brownian'
 								id: brw_tab
-								background_down: 'Icons/blue.png'
+								background_down: 'icons/blue.png'
 								on_touch_up: root.on_touch_Submenu()
 								BoxLayout:
 									orientation: 'vertical'
@@ -509,7 +509,7 @@
 				TabbedPanelItem:
 					text: 'Free!'
 					id: free_tab
-					background_down: 'Icons/blue.png'
+					background_down: 'icons/blue.png'
 					on_touch_up: root.on_touch_Menu()
 					BoxLayout:
 						size_hint: (1, 1)
@@ -562,11 +562,11 @@
 							id: free_menu
 							size_hint: (1, 1)
 							do_default_tab: False
-							background_image: 'Icons/black.png'
+							background_image: 'icons/black.png'
 							tab_width: 115
 							TabbedPanelItem:
 								text: 'Random Lattice'
-								background_down: 'Icons/blue.png'
+								background_down: 'icons/blue.png'
 								id: rl_tab2
 								on_touch_up: root.on_touch_Submenu()
 								BoxLayout:
@@ -591,7 +591,7 @@
 							TabbedPanelItem:
 								text: 'Subsystems'
 								id: sbs_tab2
-								background_down: 'Icons/blue.png'
+								background_down: 'icons/blue.png'
 								on_touch_up: root.on_touch_Slider()
 								BoxLayout:
 									orientation: 'vertical'
@@ -631,7 +631,7 @@
 							TabbedPanelItem:
 								text: 'Brownian'
 								id: brw_tab2
-								background_down: 'Icons/blue.png'
+								background_down: 'icons/blue.png'
 								on_touch_up: root.on_touch_Slider()
 								BoxLayout:
 									orientation: 'vertical'
@@ -671,7 +671,7 @@
 				TabbedPanelItem:
 					text: 'Walls'
 					id: wall_tab
-					background_down: 'Icons/blue.png'
+					background_down: 'icons/blue.png'
 					on_touch_up: root.on_touch_Menu()
 					BoxLayout:
 						size_hint: (1, 1)
@@ -725,12 +725,12 @@
 							id: wall_menu
 							size_hint: (1, 1)
 							do_default_tab: False
-							background_image: 'Icons/black.png'
+							background_image: 'icons/black.png'
 							tab_width: 115
 							TabbedPanelItem:
 								text: 'Random Lattice'
 								id: rl_tab3
-								background_down: 'Icons/blue.png'
+								background_down: 'icons/blue.png'
 								on_touch_up: root.on_touch_Submenu()
 								BoxLayout:
 									orientation: 'vertical'
@@ -754,7 +754,7 @@
 							TabbedPanelItem:
 								text: 'Subsystems'
 								id: sbs_tab3
-								background_down: 'Icons/blue.png'
+								background_down: 'icons/blue.png'
 								on_touch_up: root.on_touch_Slider()
 								BoxLayout:
 									orientation: 'vertical'
@@ -794,7 +794,7 @@
 							TabbedPanelItem:
 								text: 'Brownian'
 								id: brw_tab3
-								background_down: 'Icons/blue.png'
+								background_down: 'icons/blue.png'
 								on_touch_up: root.on_touch_Slider()
 								BoxLayout:
 									orientation: 'vertical'
@@ -854,19 +854,19 @@
 				orientation: 'horizontal'
 				Button:
 					id: g_to_m_id
-					background_normal: 'Icons/back_to_menu.png'
-					background_down: 'Icons/back_to_menu.png'
+					background_normal: 'icons/back_to_menu.png'
+					background_down: 'icons/back_to_menu.png'
 					on_press: root.transition_GM()
 				Button:
 					id: play_button
 					#text: 'Play'
-					background_normal: 'Icons/play.png'
-					background_down: 'Icons/playb.png'
+					background_normal: 'icons/play.png'
+					background_down: 'icons/playb.png'
 					on_press: root.play_button()
 				Button:
 					#text: 'Pause'
-					background_normal: 'Icons/pause.png'
-					background_down: 'Icons/pauseb.png'
+					background_normal: 'icons/pause.png'
+					background_down: 'icons/pauseb.png'
 					on_press: root.pause()
 			BoxLayout:
 				size_hint: (1, 0.1)
