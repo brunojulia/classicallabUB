@@ -117,6 +117,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from physystem import *
+from numba import jit
 
 
 #Kivy imports
@@ -129,6 +130,7 @@ from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.screenmanager import FadeTransition, SlideTransition
 
 from kivy.uix.label import Label
+from kivy.uix.slider import Slider
 from kivy.uix.button import Button
 from kivy.uix.textinput import TextInput
 from kivy.properties import ObjectProperty
@@ -226,6 +228,10 @@ class SimulationScreen(Screen):
         super(SimulationScreen, self).__init__(**kwargs)
 
     def s_pseudo_init(self):
+        """
+        JV: Here we initialize some functions and some initial values. Some of this values can be changed inside the simulation
+         on the "Advanced Settings" menu. (Go to advanced_settings() for more info)
+        """
         self.time = 0.
         #Here you can modify the initial time of computation and the step
         self.T = self.timeslider.value
@@ -235,6 +241,10 @@ class SimulationScreen(Screen):
         #Initialization of the speed button
         self.speedindex = 3
         self.change_speed()
+
+        #JV: Initial values of the temperatures of the particles (temp1) and the second type of particles for the subsystems menu
+        self.temp1 = 3
+        self.temp2 = 2
 
         #JV: This variable saves the number of steps it draws the plots. If it's 1, it will update each step of time, etc. Smaller numbers makes less "fps" in the simulation
         self.update_plots = 5
@@ -478,7 +488,7 @@ class SimulationScreen(Screen):
                 else:
                     x,y = np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n)
 
-                temp = 3.
+                temp = self.temp1
                 theta = np.random.ranf(self.n**2)*2*np.pi
                 vx,vy = 0.5*np.cos(theta),0.5*np.sin(theta)
 
@@ -534,7 +544,7 @@ class SimulationScreen(Screen):
                     x1,y1 = np.linspace(-self.L/2*0.9,-self.L/2*0.1,self.n1),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n1)
                     x2,y2 = np.linspace(self.L/2*0.1,self.L/2*0.9,self.n2),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n2)
 
-                temp1 = 1
+                temp1 = self.temp1
                 theta1 = np.random.ranf(self.n1**2)*2*np.pi
                 vx1,vy1 = 0.5*np.cos(theta1),0.5*np.sin(theta1)
                 vcm1 = np.array([np.sum(vx1),np.sum(vy1)])/self.n1**2
@@ -547,7 +557,7 @@ class SimulationScreen(Screen):
                     vx1 = (vx1-vcm1[0])*np.sqrt(2*temp1/kin1)
                     vy1 = (vy1-vcm1[1])*np.sqrt(2*temp1/kin1)
 
-                temp2 = 3
+                temp2 = self.temp2
                 theta2 = np.random.ranf(self.n2**2)*2*np.pi
                 vx2,vy2 = 0.5*np.cos(theta2),0.5*np.sin(theta2)
                 vcm2 = np.array([np.sum(vx2),np.sum(vy2)])/self.n2**2
@@ -613,7 +623,7 @@ class SimulationScreen(Screen):
                 else:
                     x,y = np.linspace(-self.L/2*0.9,self.L/2*0.9,self.nsmall),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.nsmall)
 
-                temp = 4.
+                temp = self.temp1
                 theta = np.random.ranf(self.nsmall**2)*2*np.pi
                 vx,vy = 0.5*np.cos(theta),0.5*np.sin(theta)
 
@@ -779,16 +789,23 @@ class SimulationScreen(Screen):
     def advanced_settings(self):
         content = settingswindow(change_settings = self.change_settings, cancel = self.dismiss_popup)
         self._popup = Popup(title='Advanced Settings', content = content, size_hint = (0.6,1))
+
+        #JV: We display the actual values of these parameters
         self._popup.content.rbig_slider.value = int(self.Rbig/self.R)
         self._popup.content.boxlength_slider.value = self.L
         self._popup.content.dt_slider.value = self.dt
+        self._popup.content.temp1_slider.value = self.temp1
+        self._popup.content.temp2_slider.value = self.temp2
         self._popup.open()
 
     def change_settings(self):
-        if(self._popup.content.rbig_slider.value != self.Rbig or self._popup.content.boxlength_slider.value != self.L or self._popup.content.dt_slider.value != self.dt):
+        #JV: We change the parameters if there is some change
+        if(self._popup.content.rbig_slider.value != self.Rbig or self._popup.content.boxlength_slider.value != self.L or self._popup.content.dt_slider.value != self.dt or self._popup.content.temp1_slider.value != self.temp1 or self._popup.content.temp2_slider.value != self.temp2):
             self.Rbig = self._popup.content.rbig_slider.value * self.R
             self.L = self._popup.content.boxlength_slider.value
             self.dt = self._popup.content.dt_slider.value
+            self.temp1 = self._popup.content.temp1_slider.value
+            self.temp2 = self._popup.content.temp2_slider.value
             self.add_particle_list(False)
         else:
             pass
@@ -1435,6 +1452,215 @@ class SimulationScreen(Screen):
 #sm.add_widget(MenuScreen(name='menu'))
 #sm.add_widget(SettingsScreen(name='settings'))
 
+
+@jit(nopython=True)
+def close_particles_list(r2,m,N,L):
+    """JV: This functions returns a list (a matrix) where each rows saves m indexs corresponding to the m
+    closest particles. We will use the r2 matrix calculated in fv() function (go there for more information),
+    that contains the distance between our particles"""
+    dist = r2.copy()
+#        N = self.particles.size
+#        L = self.param[2]
+    close_list = np.zeros((N,m))
+    temp_index = np.zeros((m))
+
+    for i in range(0, N):
+        temp_index = np.zeros((m))
+        for j in range(0, m):
+            min_dist = L**3
+            index_min = 0
+
+            for k in range(0, N):
+                if(dist[i,k] < min_dist and not(dist[i,k] == 0.)):
+                    min_dist = dist[i,k]
+                    index_min = k
+
+            temp_index[j] = index_min
+            dist[i,index_min] = L**3
+
+        close_list[i,:] = temp_index
+
+    return close_list
+
+@jit(nopython=True)
+def fv(X,Y,dx,dy,r2,i,close_list,m,R,L,N,U,Nlist,append):
+    """JV: Strongly based on the fv() function in PhySystem (inside physystem.py) but adapted to this scenario, see fv() in physystem.py for a good detailed explanation."""
+#    L = self.L/self.R #JV: We are working in reduced units!
+#    N = self.n**2
+
+#    MX, MXT = np.meshgrid(X,X,copy=False)
+#    MY, MYT = np.meshgrid(Y,Y,copy=False)
+#    dx = MXT - MX
+#    dx = dx
+#    dy = MYT - MY
+#    dy = dy
+#
+#    r2 = np.square(dx)+np.square(dy)
+
+    dUx = 0.
+    dUy = 0.
+    utot = np.zeros((N))
+    f = np.zeros((N,2))
+
+    #JV: Now we do include this block of code outside of this function, so we don't have problems with numba
+
+#    if(np.round(self.time,1)%0.3 == 0): #JV: every certain amount of steps we update the list
+#        self.close_list = close_particles_list(r2,self.Nlist,N,L)
+##            if(len(self.U) > 1 and len(self.K) > 1 and len(self.T) > 1):
+##                print("Total energy: ", self.U[len(self.U)-1]+self.K[len(self.K)-1])
+##                print("Temperature: ", self.T[len(self.T)-1])
+
+    for j in range(0,N):
+        dUx = 0.
+        dUy = 0.
+        u = 0.
+        u_2 = np.zeros((Nlist*N))
+
+        #JV: we now calculate the force with only the sqrt(N) closest particles
+        for k in range(0,Nlist):
+            c = int(close_list[j][k])
+
+            if((r2[j,c] < 4*max(R[j],R[c])) and (r2[j,c] > 10**(-2))):
+                #JV: We put self.r in the arguments because we want the ratius of both particles in reduced units
+                dUx = dUx + dLJverlet(dx[j,c],r2[j,c],R[j],R[c])
+                dUy = dUy + dLJverlet(dy[j,c],r2[j,c],R[j],R[c])
+
+            if (append == True):
+                if((r2[j,c] < 4*max(R[j],R[c])) and (r2[j,c] > 10**(-2))):
+                    u_2[j+k] = LJverlet(r2[j,c],R[c],R[j])
+                else:
+                    u_2[j+k] = 0
+
+        if(append == True):
+            utot[j] = u
+
+        f[j,:] = f[j,:]+np.array([dUx,dUy])
+
+    if (append == True):
+        U = np.sum(utot)
+
+    return f
+
+@jit(nopython=True)
+def dLJverlet(x,r2,R1,R2):
+    """JV: This function too is based on dLJverlet() in PhySystem (the class inside physystem.py) but adapted. Go there to get a fully detailed explanation."""
+    rc = (2**(1/6))*((R1+R2)/(2))
+    sig_int = (R1+R2)/(2)
+
+    if((r2**(1/2))>rc):
+        value = 0
+    else:
+        value = ((48.*x)/(r2))*(((((sig_int**2)*1.)/r2)**6) - ((((sig_int**2)*0.5)/r2)**3))
+
+    return value
+
+@jit(nopython=True)
+def LJverlet(r2,R1,R2):
+    """JV: This function too is based on LJverlet() in PhySystem (the class inside physystem.py) but adapted. Go there to get a fully detailed explanation."""
+    rc = (2**(1/6))*((R1+R2)/(2))
+    sig_int = (R1+R2)/(2) #JV: This is the sigma of the interaction (in the system units)
+
+    if((r2**(1/2))>rc):
+        value = 0
+    else:
+        value = 4*(((((sig_int**2)*1.)/r2)**6) - ((((sig_int**2)*1.)/r2)**3)) + 1
+
+    return value
+
+@jit(nopython=True)
+def vel_verlet(t,dt,r0,v0,a0,dx,dy,r2,close_list,m,r,R,L,N,U,Nlist,append,key_wall,key_x_val,key_y_val,wall_h,wall_w,wallpos,wallwidth,holesize,n_holes,bouncing_key,bouncing_static,w,h,b,scale):
+    """JV: Like the previous function, this function is strongly based too on the vel_verlet() function in PhySystem (inside physystem.py) but adapted to
+     this scenario, see vel_verlet() in physystem.py for a good detailed explanation."""
+
+    """In this function --> r: radius of the particle, R: radius of the Argon gas (in Angstroms)"""
+    r1 = r0 + v0*dt + 0.5*a0*dt**2 #JV: We calculate x(t+dt)
+    a1 = (1/m)*np.transpose(fv(r1[0,:],r1[1,:],dx,dy,r2,t/dt,close_list,m,r,L,N,U,Nlist,append)) #JV: From x(t+dt) we get a(t+dt)
+    v1 = v0 + 0.5*(a0+a1)*dt #JV: From the a(t+dt) and a(t) we get v(t+dt)
+
+    if(key_wall == False):
+        #JV: Border conditions, elastic collision. (The "+1" is because 1 is the radius of the ball, in the reduced units that we calculate this part)
+        v1[0,:] = np.where((np.abs(r1[0,:])+r/2)**2 > (0.49*L)**2,-v1[0,:],v1[0,:])
+        v1[1,:] = np.where((np.abs(r1[1,:])+r/2)**2 > (0.49*L)**2,-v1[1,:],v1[1,:])
+
+    elif(key_wall == True):
+        bouncing_limits_x = np.where((np.abs(r1[0,:])+r/2)**2 > (0.49*L)**2,True,False)
+        bouncing_limits_y = np.where((np.abs(r1[1,:])+r/2)**2 > (0.49*L)**2,True,False)
+
+        #JV: Check bounce for the keyboard-controlled-walls
+        wallpos_x = (key_x_val/(R)-w/(2*scale*R))
+        wallpos_y = (key_y_val/(R)-h/(2*scale*R))
+        wall_height = wall_h/R
+        wall_width = wall_w/R
+
+        bounce_left = np.where(r1[0,:]+r > (wallpos_x-wall_width/2),True,False)
+        bounce_right = np.where(r1[0,:]-r < (wallpos_x+wall_width/2),True,False)
+        is_leftside = np.where(r1[0,:] < wallpos_x, True, False)
+        is_inside = np.where(np.logical_and(r1[1,:]-1*r < wallpos_y+wall_height/2, r1[1,:]+1*r > wallpos_y-wall_height/2), True, False)
+
+        #JV: Check bounce for the static walls
+        staticpos_x = (wallpos/(R)-w/(2*scale*R))
+        static_width = wallwidth/R
+        static_hole_size = holesize/R
+
+        static_bounce_left = np.where(r1[0,:]+r > (staticpos_x-static_width/2),True,False)
+        static_bounce_right = np.where(r1[0,:]-r < (staticpos_x+static_width/2),True,False)
+        static_is_leftside = np.where(r1[0,:] < staticpos_x, True, False)
+        static_is_inhole = np.zeros((N,n_holes))
+
+        for i in range (n_holes):
+            #JV: In static_is_inhole, we have an array of N*n_holes size, with 1 when a particles is "inside" the hole (in the y-coordinate)
+            bottom = (i*h/(n_holes) - (h/(n_holes) - holesize*scale)/2)/(scale*R) - h/(2*scale*R)
+            top = bottom + (h/(n_holes) - holesize*scale)/(scale*R)
+
+            bottom_2 = ((i+1)*h/(n_holes) - (h/(n_holes) - holesize*scale)/2)/(scale*R) - h/(2*scale*R)
+
+            static_is_inhole[:,i] = np.where(np.logical_and(r1[1,:]+0.5*r < bottom_2, r1[1,:]-0.5*r > top), True, False)
+#            print(static_is_inhole)
+
+        for i in range (N):
+#                for j in range (self.n_holes):
+#                    if(static_is_inhole[i,j] == True):
+#                        print(i," in hole ",static_is_inhole[i,j])
+
+            if(bouncing_limits_x[i]):
+                v1[0,i] = -v1[0,i]
+            elif(bouncing_limits_y[i]):
+                v1[1,i] = -v1[1,i]
+            else:
+                #JV: Conditions for the keyboard wall
+                if(is_leftside[i] and bounce_left[i] and is_inside[i] and bouncing_key[i] == 0):
+                    v1[0,i] = -v1[0,i]
+                elif(not(is_leftside[i]) and bounce_right[i] and is_inside[i] and bouncing_key[i] == 0):
+                    v1[0,i] = -v1[0,i]
+                #JV: This additional condition (bouncing_key[i] == 0) is because we want to avoid particles entering in a loop of conditions when bouncing and
+                # making them "get stuck" in the middle of the wall, so now when it bounces it has to wait 2 more time steps to be able to bounce again
+                if(is_leftside[i] and bounce_left[i] and is_inside[i]):
+                    bouncing_key[i] += 1
+                elif(not(is_leftside[i]) and bounce_right[i] and is_inside[i]):
+                    bouncing_key[i] += 1
+                else:
+                    if (bouncing_key[i] != 0):
+                        bouncing_key[i] -= 1
+
+                #JV: Conditions for the static wall
+                if(static_is_leftside[i] and static_bounce_left[i] and not(static_is_inhole[i,:].any()) and bouncing_static[i] == 0):
+                    v1[0,i] = -v1[0,i]
+                elif(not(static_is_leftside[i]) and static_bounce_right[i] and not(static_is_inhole[i,:].any()) and bouncing_static[i] == 0):
+                    v1[0,i] = -v1[0,i]
+                #JV: This additional condition is because we want to avoid particles entering in a loop of conditions when bouncing and
+                # making them "get stuck" in the middle of the wall, so now when it bounces it has to wait 2 more time steps to be able to bounce again
+                if(static_is_leftside[i] and static_bounce_left[i] and not(static_is_inhole[i,:].any())):
+                    bouncing_static[i] += 1
+                elif(not(static_is_leftside[i]) and static_bounce_right[i] and not(static_is_inhole[i,:].any())):
+                    bouncing_static[i] += 1
+                else:
+                    if (bouncing_static[i] != 0):
+                        bouncing_static[i] -= 1
+
+#                    print(static_is_inhole[i,:],"->",static_is_inhole[i,:].any(), i)
+
+    return r1[0,:],r1[1,:],v1[0,:],v1[1,:],a1
+
 """
 JV: In this class we will try to make a "live" computation, so we don't need to wait to compute to start playing. Only needs
  physystem.py because we will use the particle() class that is defined there, but all the math is done here. Let's see if something
@@ -1443,15 +1669,33 @@ JV: In this class we will try to make a "live" computation, so we don't need to 
 class GameScreen(Screen):
     charge = 1.
 
+    #JV: Energy (Sub)Plot
+    enplot = Figure()
+    enplotax = enplot.add_subplot(111, xlabel='t', ylabel = 'Energy')
+    enplotax.set_xlim([0,60]) #JV: This initial value should change if we change the total time of computation
+    enplotax.set_ylim([0,25])
+    enplot.subplots_adjust(0.125,0.19,0.9,0.9)
+    enplotax.yaxis.labelpad = 10
+    enplotax.xaxis.labelpad = -0.5
+    enplotcanvas = FigureCanvasKivyAgg(enplot)
+
     particles = np.array([])
 
     def __init__(self, **kwargs):
         super(GameScreen, self).__init__(**kwargs)
 
     def g_pseudo_init(self):
+        #JV: This is the intial positon of the wall controlled by the user until the user brings the wall inside the canvas
+        self.key_x_val = 100
+        self.key_y_val = 100
+
+        #JV: We call this functions so we can get the keyboard information as input
+        self._keyboard = Window.request_keyboard(self._keyboard_closed, self)
+        self._keyboard.bind(on_key_down=self._on_keyboard_down)
+
         self.time = 0.
         #JV: Here you can modify the time step, no time of computation here because it will keep playing until we stop it
-        self.dt = 0.01 #JV: Because the time of computation is a number that ends with 0 or 5 (we can change this in the kivy file), we
+        self.dt = 0.002 #JV: Because the time of computation is a number that ends with 0 or 5 (we can change this in the kivy file), we
         # need a dt that is multiple of 5 (0,01;0,015;...), if we don't do this we get some strange errors (...)
 
         #Set flags to False
@@ -1460,8 +1704,8 @@ class GameScreen(Screen):
         self.previewtimer = Clock.schedule_interval(self.preview,0.04) #JV: Will call the preview() funciton every 0.04 seconds
         self.previewlist = []
         self.progress = 0.
-        self.n = 8 #JV: Modify this value if at the start you want to show more than one particle in the simulation (as a default value)
-        self.temp = 9 #JV: Initial temperature of the particles
+        self.n = 6 #JV: Modify this value if at the start you want to show more than one particle in the simulation (as a default value)
+        self.temp = 3 #JV: Initial temperature of the particles
 
         self.mass = 1 #JV: change this if you want to change the initial mass
 
@@ -1471,13 +1715,50 @@ class GameScreen(Screen):
         self.L = 200. #A
         self.M = 0.04 #kg/mol
 
+        self.draw_energy = False #JV: This is a switch variable that if True, draws (and also calculates) the energy of the simulation
+
+        self.U = [] #JV: Here we will save the value of the potential energy in every step of time
+        self.U_val = 0.
+        self.V = 0. #JV: Here we will save the value of the root of the square of the two components of the velocity
+        #JV: For the next two we use lists, go to line 620 of "physystem.py" to a brief explanation of why we do this
+        self.T = [] #JV: Here we save the value of the temperature of the system in every step of time
+        self.K = [] #JV: Here we save the value of the kinetic energy of the system in every step of time
+        self.t = []
+
+        if (self.draw_energy == True):
+            #JV: Initialization of the plots
+            self.enplotbox.add_widget(self.enplotcanvas)
+
         #JV:This variable defines the number of close particles that will be stored in the list (go to (physystem.py) close_particles_list() for more info)
-        self.Nlist = int(1*(self.n))
+        self.Nlist = int(1.4*(self.n))
+
+        #JV: Now the variables for the static walls that divide the simulation
+        self.walls = True #JV: Switch variable, if True there will be the static walls
+        self.n_holes = 4 #JV: Number of holes in these walls
+        self.holesize = 20 #JV: Length of the hole
+        self.wallwidth = 2 #JV: Width of the wall
+        self.wallpos = self.key_x_val #JV: Position of the wall, it goes where the keyboard-controlled-wall goes, if you want to change this you can do it here
+
+        self.key_wall = True #JV: This is a switch-type variable, if True, will draw the Rectangle that will make the particles bounce when touching
+        if(self.key_wall == True):
+            #JV: We create a list that will be useful for the bouncing wall (both static walls and the keyboard controlled one), that will help us
+            # in the border conditions of the wall, see in vel_verlet()
+            self.bouncing_key = np.zeros(self.n**2)
+            self.bouncing_static = np.zeros(self.n**2)
+
+        #JV: Here we initialize the intial values of the widht and the height of the wall that is controlled by the user
+        self.wall_w = 5
+        self.wall_h = 12
 
         self.add_particle_list(False)
 
     def preview(self,interval):
         """JV: This function is called every frame and draws the particles if we are running the game."""
+        w = self.plotbox.size[0]
+        h = self.plotbox.size[1]
+        b = min(w,h)
+        scale = b/self.L
+
         if(self.running == False and self.paused == False):
             self.plotbox.canvas.clear()
             with self.plotbox.canvas:
@@ -1496,14 +1777,32 @@ class GameScreen(Screen):
                     Ellipse(pos=(x0*scale+w/2.-self.R*scale/2.,y0*scale+h/2.-self.R*scale/2.),size=(self.R*scale,self.R*scale))
                     Line(points=[x0*scale+w/2.,y0*scale+h/2.,vx0*scale+w/2.+x0*scale,vy0*scale+w/2.+y0*scale])
 
+            #JV: We draw the static walls
+            if(self.walls == True):
+                with self.plotbox.canvas:
+                    Color(0.37,0.01,0.95)
+                    for i in range (self.n_holes+1):
+                        Rectangle(pos=(self.wallpos*scale-self.wallwidth*scale/2, i*h/self.n_holes - (h/self.n_holes - self.holesize*scale)/2), size = (self.wallwidth*scale,h/self.n_holes - self.holesize*scale))
+
+            #JV: We draw the keyboard-controlled wall
+            if(self.key_wall == True):
+                with self.plotbox.canvas:
+                    Color(0.0,0.0,1.0)
+                    Rectangle(pos=(self.key_x_val*scale-self.wall_w*scale/2,self.key_y_val*scale-self.wall_h*scale/2),size=(self.wall_w*scale,self.wall_h*scale))
+
     def add_particle_list(self,inversion):
         """JV: Adds the particles calling the particle() class that is stored in physystem.py"""
         self.stop() #I stop the simultion to avoid crashes
 
         self.reset_particle_list();
 
+        w = self.plotbox.size[0]
+        h = self.plotbox.size[1]
+        b = min(w,h)
+        scale = b/self.L
+
         #JV: We now locate the initial positions of these particles
-        self.X,self.Y = np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n)
+        self.X,self.Y = np.linspace(-self.L/2*0.9,self.wallpos-w/(scale*2)-self.L*0.05,self.n),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n)
 
         temp = self.temp
         theta = np.random.ranf(self.n**2)*2*np.pi
@@ -1562,14 +1861,29 @@ class GameScreen(Screen):
     def play_button(self):
         """JV: Function that is called when pressing the play button on the interface, it starts the "game" """
         if(self.running==False):
-            self.timer = Clock.schedule_interval(self.step_animate,0.04)
+            self.timer = Clock.schedule_interval(self.step_animate,0.01)
             self.running = True
             self.paused = False
         elif(self.running==True):
             pass
 
+    def _keyboard_closed(self):
+        self._keyboard.unbind(on_key_down=self._on_keyboard_down)
+        self._keyboard = None
+
+    def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
+        if keycode[1] == 'w':
+            if(self.key_y_val + self.wall_h/2.0 < self.L):
+                self.key_y_val += self.L/100
+        if keycode[1] == 's':
+            if(self.key_y_val - self.wall_h/2.0 > 0):
+                self.key_y_val -= self.L/100
+        return True
+
     def step_animate(self,interval):
         """JV: Calculates a step of vel_verlet and then draws it. Keeps doing this until we stop it from the interface"""
+
+        #JV: TODO: Maybe make this global so we don't need to allocate each frame...
         w = self.plotbox.size[0]
         h = self.plotbox.size[1]
         b = min(w,h)
@@ -1602,17 +1916,32 @@ class GameScreen(Screen):
 
             r2 = np.square(dx)+np.square(dy)
 
-            self.close_list = PhySystem.close_particles_list(self.s,r2,self.Nlist) #JV: We calculate the matrix that contains in every row the indexs of the m closest particles
+            self.close_list = close_particles_list(r2,self.Nlist,N,self.L) #JV: We calculate the matrix that contains in every row the indexs of the m closest particles
 
             self.X0 = self.X
             self.Y0 = self.Y
             self.VX0 = self.Vx
             self.VY0 = self.Vy
 
-            self.a0 = (1/self.m)*np.transpose(self.fv(self.X0[:],self.Y0[:]))
+            self.a0 = (1/self.m)*np.transpose(fv(self.X0[:],self.Y0[:],dx,dy,r2,self.time/self.dt,self.close_list,self.m,self.r,self.L,N,self.U_val,self.Nlist,self.draw_energy))
 
         #JV: call velocityverlet to compute the next position
-        self.X,self.Y,self.Vx,self.Vy,self.a1 = self.vel_verlet(self.time,self.dt,np.array([self.X0,self.Y0]),np.array([self.VX0,self.VY0]),self.a0)
+        MX, MXT = np.meshgrid(self.X0[:],self.X0[:],copy=False)
+        MY, MYT = np.meshgrid(self.Y0[:],self.Y0[:],copy=False)
+        dx = MXT - MX
+        dx = dx
+
+        dy = MYT - MY
+        dy = dy
+
+        r2 = np.square(dx)+np.square(dy)
+
+        if(np.round((self.time/self.dt*self.dt)%0.5,2) == 0): #JV: every certain amount of steps we update the list
+#            print(self.time)
+            self.close_list = close_particles_list(r2,self.Nlist,N,self.L) #JV: matrix that contains in every row the indexs of the m closest particles
+
+        #vel_verlet(t,dt,r0,v0,a0,dx,dy,r2,close_list,m,r,R,L,N,U,Nlist,append,key_wall,key_x_val,key_y_val,wall_h,wall_w,wallpos,wallwidth,holesize,n_holes,bouncing_key,bouncing_static,w,h,b,scale):
+        self.X,self.Y,self.Vx,self.Vy,self.a1 = vel_verlet(self.time,self.dt,np.array([self.X0,self.Y0]),np.array([self.VX0,self.VY0]),self.a0,dx,dy,r2,self.close_list,self.m,self.r,self.R,self.L/self.R,N,self.U_val,self.Nlist,self.draw_energy,self.key_wall,self.key_x_val,self.key_y_val,self.wall_h,self.wall_w,self.wallpos,self.wallwidth,self.holesize,self.n_holes,self.bouncing_key,self.bouncing_static,w,h,b,scale)
 
         #JV: We keep track of this step in time:
         self.time += self.dt
@@ -1623,76 +1952,55 @@ class GameScreen(Screen):
         self.X0,self.Y0 = self.X,self.Y
         self.VX0,self.VY0 = self.Vx,self.Vy
 
+        if (self.draw_energy == True):
+            #JV: We calculate now self.V, self.T, self.K
+            self.U.append(self.U_val)
+            Ki = self.m*(self.Vx**2 + self.Vy**2)/2.
+            self.K.append(np.sum(Ki))
+            self.V = np.sqrt((self.Vx**2 + self.Vy**2))
+            self.T.append(np.sum(self.V[int(self.n/2)]**2)/(self.particles.size*2 - 2))
+
         #JV: Now we draw the particles
         with self.plotbox.canvas:
             for j in range(0,N):
                 Color(1.0,0.0,0.0)
-                Ellipse(pos=((self.X[j])*scale*self.R+w/2.-self.R*scale/2.,(self.Y[j])*scale*self.R+h/2.-self.R*scale/2.),size=(self.r[j]*self.R*scale,self.r[j]*self.R*scale))
+                Ellipse(pos=((self.X[j])*scale*self.R+w/2.-self.r[j]*scale/2.,(self.Y[j])*scale*self.R+h/2.-self.r[j]*scale/2.),size=(self.r[j]*self.R*scale,self.r[j]*self.R*scale))
 
-    def fv(self,X,Y):
-        """JV: Strongly based on the fv() function in PhySystem (inside physystem.py) but adapted to this scenario, see fv() in physystem.py for a good detailed explanation."""
-        L = self.L/self.R #JV: We are working in reduced units!
-        N = self.n**2
+         #JV: We draw the static walls
+        if(self.walls == True):
+            with self.plotbox.canvas:
+                Color(0.37,0.01,0.95)
+                for i in range (self.n_holes+1):
+                    Rectangle(pos=(self.wallpos*scale-self.wallwidth*scale/2, i*h/self.n_holes - (h/self.n_holes - self.holesize*scale)/2), size = (self.wallwidth*scale,h/self.n_holes - self.holesize*scale))
 
-        MX, MXT = np.meshgrid(X,X,copy=False)
-        MY, MYT = np.meshgrid(Y,Y,copy=False)
-        dx = MXT - MX
-        dx = dx
-        dy = MYT - MY
-        dy = dy
+        #JV: We draw the keyboard-controlled wall
+        if(self.key_wall == True):
+            with self.plotbox.canvas:
+                Color(0.0,0.0,1.0)
+                Rectangle(pos=(self.key_x_val*scale-self.wall_w*scale/2, self.key_y_val*scale-self.wall_h*scale/2), size = (self.wall_w*scale,self.wall_h*scale))
 
-        r2 = np.square(dx)+np.square(dy)
+        i = int(self.time/self.dt)
 
-        dUx = 0.
-        dUy = 0.
-        f = np.zeros([N,2])
+        if (self.draw_energy):
+            #JV: We draw the energy:
+            self.t.append(self.time)
 
-        if(np.round(self.time,1)%0.5== 0): #JV: every certain amount of steps we update the list
-            self.close_list = PhySystem.close_particles_list(self.s,r2,self.Nlist)
+            self.enplotax.clear()
+            self.enplotax.set_xlabel('t')
+            self.enplotax.set_ylabel('Energy')
 
-        for j in range(0,N):
-            dUx = 0
-            dUy = 0
+            if(i > 2):
+    #            print(len(self.K), i)
+                self.enplotax.set_xlim([0,self.t[i-1]])
+                self.enplotax.set_ylim([0,(np.array(self.K[0:i-1]).max()+np.array(self.U[0:i-1]).max())+np.uint(np.array(self.K[0:i-1]).max()+np.array(self.U[0:i-1]).max())/40])
 
-            #JV: we now calculate the force with only the sqrt(N) closest particles
-            for k in range(0,self.Nlist):
-                c = int(self.close_list[j][k])
+                self.enplotax.plot(self.t[0:i-1],self.K[0:i-1],'r-',label = 'Kinetic Energy', linewidth = 2.2)
+                self.enplotax.plot(self.t[0:i-1],self.U[0:i-1],'b-',label = 'Potential Energy')
+                self.enplotax.plot(self.t[0:i-1],self.K[0:i-1]+self.U[0:i-1],'g-',label = 'Total Energy')
 
-                if((r2[j,c] < 4*max(self.r[j],self.r[c])) and (r2[j,c] > 10**(-2))):
-                    #JV: We put self.r in the arguments because we want the ratius of both particles in reduced units
-                    dUx = dUx + self.dLJverlet(dx[j,c],r2[j,c],self.r[j],self.r[c])
-                    dUy = dUy + self.dLJverlet(dy[j,c],r2[j,c],self.r[j],self.r[c])
+                self.enplotax.legend(loc=7)
 
-            f[j,:] = f[j,:]+np.array([dUx,dUy])
-
-        return f
-
-    def vel_verlet(self,t,dt,r0,v0,a0):
-        """JV: Like the previous function, this function is strongly based too on the vel_verlet() function in PhySystem (inside physystem.py) but adapted to
-         this scenario, see vel_verlet() in physystem.py for a good detailed explanation."""
-        r1 = r0 + v0*dt + 0.5*a0*dt**2 #JV: We calculate x(t+dt)
-        a1 = (1/self.m)*np.transpose(self.fv(r1[0,:],r1[1,:])) #JV: From x(t+dt) we get a(t+dt)
-        v1 = v0 + 0.5*(a0+a1)*dt #JV: From the a(t+dt) and a(t) we get v(t+dt)
-
-        L = self.L/self.R #JV: We are working in reduced units!
-
-        #JV: Border conditions, elastic collision. (The "+1" is because 1 is the radius of the ball, in the reduced units that we calculate this part)
-        v1[0,:] = np.where((abs(r1[0,:])+self.r/2)**2 > (0.49*L)**2,-v1[0,:],v1[0,:])
-        v1[1,:] = np.where((abs(r1[1,:])+self.r/2)**2 > (0.49*L)**2,-v1[1,:],v1[1,:])
-
-        return r1[0,:],r1[1,:],v1[0,:],v1[1,:],a1
-
-    def dLJverlet(self,x,r2,R1,R2):
-        """JV: This function too is based on dLJverlet() in PhySystem (the class inside physystem.py) but adapted. Go there to get a fully detailed explanation."""
-        rc = (2**(1/6))*((R1+R2)/(2))
-        sig_int = (R1+R2)/(2)
-
-        if((r2**(1/2))>rc):
-            value = 0
-        else:
-            value = ((48.*x)/(r2))*(((((sig_int**2)*1.)/r2)**6) - ((((sig_int**2)*0.5)/r2)**3))
-
-        return value
+                self.enplotcanvas.draw()
 
     def transition_GM(self):
         """JV: Screen transition: from 'menu' to 'game' """
