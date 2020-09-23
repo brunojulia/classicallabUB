@@ -221,7 +221,6 @@ def fv(X,Y,dx,dy,r2,i,append,L,N,U,dt,close_list,Nlist,vel_verlet_on,R,menu,subm
         dUx = 0.
         dUy = 0.
         u = 0.
-        u_2 = np.zeros((Nlist*N))
 
         #JV: we now calculate the force with only the Nlist closest particles
         for k in range(0,Nlist):
@@ -246,9 +245,9 @@ def fv(X,Y,dx,dy,r2,i,append,L,N,U,dt,close_list,Nlist,vel_verlet_on,R,menu,subm
             # and that will be visible in fluctuations on the energy
             if(vel_verlet_on == True):
                 if((r2[j,c] < 2*max(R[j],R[c])) and (r2[j,c] > 10**(-2))):
-                    u_2[j+k] = LJverlet(r2[j,c],R[c],R[j])
-                else:
-                    u_2[j+k] = 0.
+                    u = u + LJverlet(r2[j,c],R[c],R[j])
+#                else:
+#                    u = u + walls([X[j],Y[j]])#JV: TO CHANGE; NOW ONLY WORKS WITH VEL_VERLET_ON
 #            else:
 #                if((r2[j,c] < 2*max(R[j],R[c])) and (r2[j,c] > 10**(-2))):
 #                    u = u + LJverlet(r2[j,c],R[c],R[j],param)
@@ -585,34 +584,36 @@ class PhySystem:
 
                     if(self.param[4] == "Subsystems"):
                         sumagrid_subs = np.zeros([2])
-                        sumagrid_subs[0] = np.sum(self.grid[:,:,0])
-                        sumagrid_subs[1] = sumagrid - sumagrid_subs[0]
+                        sumagrid_subs[0] = np.sum(self.grid[:,:,0]) #JV: Number of type-0 particles
+                        sumagrid_subs[1] = sumagrid - sumagrid_subs[0] #JV: Number of type-1 particles
 
-                        p0 = np.zeros([(self.G**2)*2])
-                        counter = 0
                         for j in range(self.G):
                             for k in range(self.G):
                                 for l in range(2):
-                                    if (self.grid[j,k,0]+self.grid[j,k,1] != 0):
-                                        p0[counter] = float(self.grid[j,k,l])/update_entropy*(self.grid[j,k,0]+self.grid[j,k,1])
+                                    if ((self.grid[j,k,0]+self.grid[j,k,1]) != 0):
+                                        pji = float(self.grid[j,k,l])/(update_entropy*(self.grid[j,k,0]+self.grid[j,k,1]))
                                     else:
-                                        p0[counter] = 0
-                                    counter += 1
+                                        pji = 0
+                                    if(pji != 0):
+                                        self.entropy_val += -pji*np.log(pji) #JV: We will only calculate the value when pji != 0
 
-                        pjc = p0/sum(p0)
+#                        pjc = p0/sum(p0)
+#                        pjc = p0
+#
+#                        for j in range(counter):
+#                            if(pjc[j] != 0):
+#                                self.entropy_val += -pjc[j]*np.log(pjc[j])
 
-                        for j in range(counter):
-                            if(pjc[j] != 0):
-                                self.entropy_val += -pjc[j]*np.log(pjc[j])
+                        self.entropy_val = self.entropy_val /(self.G**2)
 
                     else:
                         for j in range(self.G):
                             for k in range(self.G):
                                 pji = float(self.grid[j,k,0])/(update_entropy*sumagrid)
                                 if(pji != 0):
-                                    self.entropy_val  += pji*np.log(pji)
+                                    self.entropy_val  += -pji*np.log(pji)
 
-                        self.entropy_val = -self.entropy_val /(self.G**2)
+                        self.entropy_val = self.entropy_val /(self.G**2)
 
                     if(self.param[4] == "Subsystems"):
                         self.grid = np.zeros([self.G,self.G,2])

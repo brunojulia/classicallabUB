@@ -162,6 +162,7 @@ class settingswindow(FloatLayout):
 
 class SimulationScreen(Screen):
     charge = 1.
+    blit = True #JV: When blit is True, the plotting is much faster, but in some articles mention that blit can cause strong memory leakage
 
     particles = np.array([])
 
@@ -191,13 +192,30 @@ class SimulationScreen(Screen):
 
     #JV: Energy (Sub)Plot
     enplot = Figure()
+#    enplot = plt.figure()
+#    enplot, (enplotax) = plt.subplots(1)
+#    enplotax1 = enplot.add_subplot(2, 1, 1)
+#    enplotax2 = enplot.add_subplot(2, 1, 2)
     enplotax = enplot.add_subplot(111, xlabel='t', ylabel = 'Energy')
-    enplotax.set_xlim([0,60]) #JV: This initial value should change if we change the total time of computation
+    enplotax.set_xlim([0,1])
     enplotax.set_ylim([0,25])
+#    enplotax.set_xlim([0,60]) #JV: This initial value should change if we change the total time of computation
+#    enplotax.set_ylim([0,25])
+#    img = enplotax.imshow(X, vmin=-1, vmax=1, interpolation="None", cmap="RdBu")
     enplot.subplots_adjust(0.125,0.19,0.9,0.9)
     enplotax.yaxis.labelpad = 10
     enplotax.xaxis.labelpad = -0.5
+
+#    line, = enplotax.plot(np.array([0]),np.array([0]))
+#    line, = enplotax.plot([], [], "-", lw = 2)
+#    text = enplotax.text(0.8,0.5, "")
+
     enplotcanvas = FigureCanvasKivyAgg(enplot)
+#    enplot.canvas.draw()
+
+    if blit:
+        enplotaxbackground = enplotcanvas.copy_from_bbox(enplotax.bbox)
+    plt.show(block = False)
 
     #JV: Xpos plot
     extraplot = Figure()
@@ -246,8 +264,19 @@ class SimulationScreen(Screen):
         self.temp1 = 3
         self.temp2 = 2
 
-        #JV: This variable saves the number of steps it draws the plots. If it's 1, it will update each step of time, etc. Smaller numbers makes less "fps" in the simulation
+        self.compact = 1 #JV: If this variable is increased, the particles will be close to each other, instead of ocupying the whole space they will get into a "corner"
+
+        #JV: This number is the steps it takes in the animation, to draws the plots. If it's 1, it will update each step of time, etc.
         self.update_plots = 5
+        #JV: The momentum plot can be slower than the other plots, so we it is possible to only update it every certain steps inside the plotting() function. If 1 it will update like the other plots.
+        self.update_momentum = 3
+        self.histtype = "stepfilled" #JV: The type of histogram. {'bar', 'barstacked', 'step', 'stepfilled'}. "bar" seems to be the most appealing visually, while "step" runs much faster
+        self.counter = 0 #JV: The counter of this "plotting" steps
+        #JV: This counters store the last plotting point, so we can print the ones that are missing (one for the energy plot and the other for the entropy)
+        self.prev_i_en = 0
+        self.prev_i_ex = 0
+        self.simulation = False #JV: This bool will be true when we will have calculated/loaded a simulation
+        self.simulation_type = "" #JV: This variable will store the type of simulation that we have calculated
 
         #Set flags to False
         self.running = False #Checks if animation is running
@@ -486,7 +515,7 @@ class SimulationScreen(Screen):
                 if(self.our_menu == "Walls"):
                     x,y = np.linspace(-self.L/2*0.9,self.wallpos-self.L*0.05,self.n),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n)
                 else:
-                    x,y = np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n)
+                    x,y = np.linspace(-self.L/2*0.9/self.compact,self.L/2*0.9/self.compact,self.n),np.linspace(-self.L/2*0.9/self.compact,self.L/2*0.9/self.compact,self.n)
 
                 temp = self.temp1
                 theta = np.random.ranf(self.n**2)*2*np.pi
@@ -701,7 +730,9 @@ class SimulationScreen(Screen):
 
         elif(self.ready==True):
             if(self.running==False):
+                time.sleep(0.5)
                 self.timer = Clock.schedule_interval(self.animate,0.04)
+                self.timer2 = Clock.schedule_interval(self.plotting, 0.04*self.update_plots)
                 self.running = True
                 self.paused = False
             elif(self.running==True):
@@ -743,10 +774,15 @@ class SimulationScreen(Screen):
         np.savetxt('t_energy.dat',self.s.K + self.s.U,fmt='%10.5f')
         np.savetxt('temps.dat',self.s.T,fmt='%10.5f')
 
+        self.simulation = True #JV: This bool is True if we have a simulation calculated/loaded
+        self.simulation_type = self.our_submenu #JV: This variable stores the type of simulation that we have calculated
+        self.setplotlimits(simulation = self.simulation) #JV: We call the function that will update the limits of our (matplotlib) plots
+
     def pause(self):
         if(self.running==True):
             self.paused = True
             self.timer.cancel()
+            self.timer2.cancel()
             self.running = False
         else:
             pass
@@ -757,7 +793,13 @@ class SimulationScreen(Screen):
         self.time = 0
         self.obj2.clear()
         self.plotbox.canvas.clear()
+        self.progressbar.value = 0 #JV: We set the progress bar to 0
+#        self.setplotlimits(simulation = self.simulation) #JV: We don't know if we have calculated/loaded a simulation yet
+
+        #JV: Restart the counters
         self.acucounter = 0
+        self.prev_i_en = 0
+        self.prev_i_ex = 0
 
     def change_speed(self):
         #This simply cicles the sl list with the speed multipliers, self.speed is later
@@ -776,7 +818,7 @@ class SimulationScreen(Screen):
     def save(self,path,name):
         #I put all the relevant data in a numpy array and save it with pickle
         #The order is important for the loading process.
-        savedata = np.array([self.s,self.T,self.dt,self.L,self.previewlist,self.our_menu,self.our_submenu,self.n1,self.n2,self.nsmall,self.wallpos,self.holesize,self.Rbig])
+        savedata = np.array([self.s,self.T,self.dt,self.L,self.previewlist,self.our_menu,self.our_submenu,self.n1,self.n2,self.nsmall,self.wallpos,self.holesize,self.Rbig,self.temp1,self.temp2,self.compact])
         with open(os.path.join(path,name+'.dat'),'wb') as file:
             pickle.dump(savedata,file)
         self.dismiss_popup()
@@ -796,16 +838,18 @@ class SimulationScreen(Screen):
         self._popup.content.dt_slider.value = self.dt
         self._popup.content.temp1_slider.value = self.temp1
         self._popup.content.temp2_slider.value = self.temp2
+        self._popup.content.compact_slider.value = self.compact
         self._popup.open()
 
     def change_settings(self):
         #JV: We change the parameters if there is some change
-        if(self._popup.content.rbig_slider.value != self.Rbig or self._popup.content.boxlength_slider.value != self.L or self._popup.content.dt_slider.value != self.dt or self._popup.content.temp1_slider.value != self.temp1 or self._popup.content.temp2_slider.value != self.temp2):
+        if(self._popup.content.rbig_slider.value != self.Rbig or self._popup.content.boxlength_slider.value != self.L or self._popup.content.dt_slider.value != self.dt or self._popup.content.temp1_slider.value != self.temp1 or self._popup.content.temp2_slider.value != self.temp2 or self._popup.content.compact_slider.value != self.compact):
             self.Rbig = self._popup.content.rbig_slider.value * self.R
             self.L = self._popup.content.boxlength_slider.value
             self.dt = self._popup.content.dt_slider.value
             self.temp1 = self._popup.content.temp1_slider.value
             self.temp2 = self._popup.content.temp2_slider.value
+            self.compact = self._popup.content.compact_slider.value
             self.add_particle_list(False)
         else:
             pass
@@ -828,6 +872,9 @@ class SimulationScreen(Screen):
         self.wallpos = savedata[10]
         self.holesize = savedata[11]
         self.Rbig = savedata[12]
+        self.temp1 = savedata[13]
+        self.temp2 = savedata[14]
+        self.compact = savedata[15]
 
         self.timeslider.value = self.T
         self.n = int(np.sqrt(self.s.particles.size))
@@ -917,37 +964,18 @@ class SimulationScreen(Screen):
         if(demo==False):
             self.dismiss_popup()
 
+        self.simulation = True #JV: This bool is True if we have a simulation calculated/loaded
+        self.simulation_type = self.our_submenu #JV: This variable stores the type of simulation that we have calculated
+        self.setplotlimits(simulation = self.simulation) #JV: Reset and adapt the matplotlib plots
+
     def loadpopup(self):
         content = loadwindow(load = self.load, cancel = self.dismiss_popup)
         self._popup = Popup(title='Load File', content = content, size_hint=(1,1))
         self._popup.open()
 
 
-
-#    def plotpopup(self):
-#        """This plotpopu show the energy plots on a popup when the giant 'Energy' button
-#        on the UI is pressed, this was originally and experiment and I ran out of time to
-#        change it. It should be done like the histograms and embed the FigureCanvasKivyAgg in
-#        the UI directly"""
-#        self.eplot = Figure()
-#        t = np.arange(self.dt,self.T+self.dt,self.dt)
-#        ax = self.eplot.add_subplot(111)
-#
-#        ax.plot(t,self.s.K,'r-',label = 'Kinetic Energy')
-#        ax.plot(t,self.s.U,'b-',label = 'Potential Energy')
-#        ax.plot(t,self.s.K+self.s.U,'g-',label = 'Total Energy')
-##        plt.plot(t,self.s.Kmean,'g-',label = 'Mean Kinetic Energy')
-#        ax.legend(loc=1)
-#        ax.set_xlabel('t')
-#
-#        self.ecanvas = FigureCanvasKivyAgg(self.eplot)
-#        content = self.ecanvas
-#        self._popup = Popup(title ='Energy conservation',content = content, size_hint=(0.9,0.9))
-#        self._popup.open()
-
     def dismiss_popup(self):
         self._popup.dismiss()
-
 
 
     def timeinversion(self):
@@ -966,6 +994,272 @@ class SimulationScreen(Screen):
             self.add_particle_list(True)
         pass
 
+    def plotting(self,interval):
+        """JV: This function is the responsible of updating the plots"""
+        i = int(self.time/self.dt)
+        pause = 0.001
+
+        delta = 5./self.dt
+
+        if(self.our_submenu == 'Random Lattice'):
+            if(self.plotmenu.current_tab.text == 'Energy'): #JV: instantaneous energy graphic
+                #JV: The +10 is because we actually compute 10 units of time more than we represent, check computation() fucntion for more detail
+#                t = np.arange(self.dt,self.T+10+self.dt,self.dt)
+                self.enplotax.plot(self.tplot[self.prev_i_en:i],self.s.K[self.prev_i_en:i],'r-',label = 'Kinetic Energy', linewidth = 2.2)
+                self.enplotax.plot(self.tplot[self.prev_i_en:i],self.s.U[self.prev_i_en:i],'b-',label = 'Potential Energy')
+                self.enplotax.plot(self.tplot[self.prev_i_en:i],self.s.K[self.prev_i_en:i]+self.s.U[self.prev_i_en:i],'g-',label = 'Total Energy')
+                self.enplotcanvas.draw()
+                self.prev_i_en = i
+                plt.pause(pause)
+
+            elif(self.plotmenu.current_tab.text == 'Momentum'): #Instantaneous momentum histogram
+#                vs = np.linspace(0,self.s.V.max()+0.5,100) #JV: The +0.5 is because we want to see the whole last possible bar
+                if(self.counter % self.update_momentum == 0):
+                    self.histax.cla()
+                    self.histax.set_xlabel('v')
+                    self.histax.set_ylabel('Number of particles relative')
+#                    self.hist.subplots_adjust(0.125,0.19,0.9,0.9)
+#                    self.histax.yaxis.labelpad = 10
+#                    self.histax.xaxis.labelpad = -0.5
+                    self.histax.set_xlim([0,self.s.V.max()+0.5])
+                    self.histax.set_ylim([0,np.ceil(self.s.MB.max())])
+                    self.histax.hist(self.s.V[i,:],bins=np.arange(0,self.s.V.max()+1, 0.334),rwidth=0.75,density=True,color=[0.0,0.0,1.0], histtype = self.histtype)
+                    self.histax.text(self.vsplot[np.argmax(self.s.MB[i,:])-int(len(self.vsplot)*0.2)],self.s.MB[i,:].max(),"T = "+str(np.round(self.s.T[i],decimals=3)), fontsize=15, color = "red", alpha = 0.85)
+                    self.histax.plot(self.vsplot,self.s.MB[i,:],'r-')
+                    self.histcanvas.draw()
+                    plt.pause(pause)
+
+            elif(self.plotmenu.current_tab.text == 'Acu'): #Accumulated momentum histogram
+#                self.acuhistax.clear() #JV: We clean the graphic although we don't draw anything yet (to clean anything left in a previous simulation)
+                if(self.time > 30.):
+#                    vs = np.linspace(0,self.s.V.max()+0.5,100)
+                    self.acuhistax.cla()
+                    self.acuhistax.set_xlabel('v')
+                    self.acuhistax.set_ylabel('Number of particles relative')
+#                    self.acuhist.subplots_adjust(0.125,0.19,0.9,0.9)
+#                    self.acuhistax.yaxis.labelpad = 10
+#                    self.acuhistax.xaxis.labelpad = -0.5
+                    self.acuhistax.set_xlim([0,self.s.V.max()+0.5])
+                    self.acuhistax.set_ylim([0,np.ceil(self.s.MB.max())])
+                    self.acuhistax.hist(self.s.Vacu[int((i-int((40./self.dt)))/delta)],bins=np.arange(0, self.s.V.max() + 0.2, 0.3),density=True)
+                    self.acuhistax.plot(self.vsplot,self.s.MBacu[int((i-int((40./self.dt)))/delta)],'r-')
+                    self.acuhistcanvas.draw()
+                    plt.pause(pause)
+
+            elif(self.plotmenu.current_tab.text == 'Entropy'):
+#                t = np.arange(self.dt,self.T+10+self.dt,self.dt)
+                self.extraplotax.plot(self.tplot[self.prev_i_ex:i],self.s.entropy[self.prev_i_ex:i],'g-')
+                self.extraplotcanvas.draw()
+                self.prev_i_ex = i
+                plt.pause(pause)
+
+        elif(self.our_submenu == 'Subsystems'):
+            #JV: Here we do the graphics for this submenu, check the comments from the previous submenu for more info
+            #JV: We will draw the two subsystems in two diferent colors
+            if(self.plotmenu.current_tab.text == 'Energy'):
+#                t = np.arange(self.dt,self.T+10+self.dt,self.dt)
+                self.enplotax.plot(self.tplot[self.prev_i_en:i],self.s.K[self.prev_i_en:i],'r-',label = 'Kinetic Energy', linewidth = 2.2)
+                self.enplotax.plot(self.tplot[self.prev_i_en:i],self.s.U[self.prev_i_en:i],'b-',label = 'Potential Energy')
+                self.enplotax.plot(self.tplot[self.prev_i_en:i],self.s.K[self.prev_i_en:i]+self.s.U[self.prev_i_en:i],'g-',label = 'Total Energy')
+                self.enplotcanvas.draw()
+                self.prev_i_en = i
+                plt.pause(pause)
+
+            elif(self.plotmenu.current_tab.text == 'Momentum'): #Instantaneous momentum histogram
+#                vs = np.linspace(0,self.s.V.max()+0.5,100) #JV: The +0.5 is because we want to see the whole last possible bar
+                if(self.counter % self.update_momentum == 0):
+                    self.histax.cla()
+                    self.histax.set_xlim([0,self.s.V.max()+0.5])
+                    self.histax.set_ylim([0,np.ceil(self.s.MB.max())])
+                    self.histax.set_xlabel('v')
+                    self.histax.set_ylabel('Number of particles relative')
+#                    self.hist.subplots_adjust(0.125,0.19,0.9,0.9)
+#                    self.histax.yaxis.labelpad = 10
+#                    self.histax.xaxis.labelpad = -0.5
+                    self.histax.hist([self.s.V[i,0:self.n1**2], self.s.V[i,self.n1**2:self.n1**2+self.n2**2]], bins=np.arange(0, self.s.V.max() + 1, 0.67), rwidth=0.8, density=True, color=[[0.32,0.86,0.86],[0.43,0.96,0.16]], histtype = self.histtype)
+                    #JV: We now plot the texts that show the temperature of each types of particles
+                    self.histax.text(self.s.V.max()-2.5,0.8,"T1 = "+str(np.round(self.s.T1[i],decimals=3)), fontsize = 12, color = "blue", alpha = 0.75)
+                    self.histax.text(self.s.V.max()-1,0.8,"T2 = "+str(np.round(self.s.T2[i],decimals=3)), fontsize = 12, color = "green", alpha = 0.75)
+                    self.histax.text(self.vsplot[np.argmax(self.s.MB[i,:])-int(len(self.vsplot)*0.2)],self.s.MB[i,:].max(),"T = "+str(np.round(self.s.T[i],decimals=3)), fontsize = 12, color = "red", alpha = 0.85)
+                    self.histax.plot(self.vsplot,self.s.MB1[i,:],'b-', alpha = 0.5)
+                    self.histax.plot(self.vsplot,self.s.MB2[i,:],'g-', alpha = 0.5)
+                    self.histax.plot(self.vsplot,self.s.MB[i,:],'r-')
+                    self.histcanvas.draw()
+                    plt.pause(pause)
+
+            elif(self.plotmenu.current_tab.text == 'Acu'): #Accumulated momentum histogram
+                self.acuhistax.clear()
+                if(self.time > 30.):
+#                    vs = np.linspace(0,self.s.V.max()+0.5,100)
+                    self.acuhistax.cla()
+                    self.acuhistax.set_xlabel('v')
+                    self.acuhistax.set_ylabel('Number of particles relative')
+#                    self.acuhist.subplots_adjust(0.125,0.19,0.9,0.9)
+#                    self.acuhistax.yaxis.labelpad = 10
+#                    self.acuhistax.xaxis.labelpad = -0.5
+                    self.acuhistax.set_xlim([0,self.s.V.max()+0.5])
+                    self.acuhistax.set_ylim([0,np.ceil(self.s.MB.max())])
+                    self.acuhistax.hist(self.s.Vacu[int((i-int((40./self.dt)))/delta)],bins=np.arange(0, self.s.V.max() + 0.2, 0.3),density=True)
+                    self.acuhistax.plot(self.vsplot,self.s.MBacu[int((i-int((40./self.dt)))/delta)],'r-')
+                    self.acuhistcanvas.draw()
+                    plt.pause(pause)
+
+            elif(self.plotmenu.current_tab.text == 'Entropy'):
+#                t = np.arange(self.dt,self.T+10+self.dt,self.dt)
+                self.extraplotax.plot(self.tplot[self.prev_i_ex:i],self.s.entropy[self.prev_i_ex:i],'g-')
+                self.extraplotcanvas.draw()
+                self.prev_i_ex = i
+                plt.pause(pause)
+
+        elif(self.our_submenu == 'Brownian'):
+            if(self.plotmenu.current_tab.text == 'Energy'):
+#                t = np.arange(self.dt,self.T+10+self.dt,self.dt)
+                self.enplotax.plot(self.tplot[self.prev_i_en:i],self.s.K[self.prev_i_en:i],'r-',label = 'Kinetic Energy', linewidth = 2.2)
+                self.enplotax.plot(self.tplot[self.prev_i_en:i],self.s.U[self.prev_i_en:i],'b-',label = 'Potential Energy')
+                self.enplotax.plot(self.tplot[self.prev_i_en:i],self.s.K[self.prev_i_en:i]+self.s.U[self.prev_i_en:i],'g-',label = 'Total Energy')
+                self.enplotcanvas.draw()
+                self.prev_i_en = i
+                plt.pause(pause)
+
+            elif(self.plotmenu.current_tab.text == 'Momentum'): #Instantaneous momentum histogram
+#                vs = np.linspace(0,self.s.V.max()+0.5,100) #JV: The +0.5 is because we want to see the whole last possible bar
+                if(self.counter % self.update_momentum == 0):
+                    self.histax.cla()
+                    self.histax.set_xlim([0,self.s.V.max()+0.5])
+                    self.histax.set_ylim([0,np.ceil(self.s.MB.max())])
+                    self.histax.set_xlabel('v')
+                    self.histax.set_ylabel('Number of particles relative')
+#                    self.hist.subplots_adjust(0.125,0.19,0.9,0.9)
+#                    self.histax.yaxis.labelpad = 10
+#                    self.histax.xaxis.labelpad = -0.5
+                    self.histax.hist([self.s.V[i,0:self.nsmall**2],self.s.V[i,self.nsmall**2:self.nsmall**2+self.nbig**2]],bins=np.arange(0, self.s.V.max() + 1, 0.334),rwidth=0.75,density=True,color=[[0.32,0.86,0.86],[0.43,0.96,0.16]], histtype = self.histtype)
+                    self.histax.text(self.vsplot[np.argmax(self.s.MB[i,:])-int(len(self.vsplot)*0.2)],self.s.MB[i,:].max(),"T = "+str(np.round(self.s.T[i],decimals=3)), fontsize=15, color = "red", alpha = 0.85)
+                    self.histax.plot(self.vsplot,self.s.MB[i,:],'r-')
+                    self.histcanvas.draw()
+                    plt.pause(pause)
+
+            elif(self.plotmenu.current_tab.text == 'Acu'): #Accumulated momentum histogram
+                self.acuhistax.clear()
+                if(self.time > 30.):
+#                    vs = np.linspace(0,self.s.V.max()+0.5,100)
+                    self.acuhistax.cla()
+                    self.acuhistax.set_xlabel('v')
+                    self.acuhistax.set_ylabel('Number of particles relative')
+#                    self.acuhist.subplots_adjust(0.125,0.19,0.9,0.9)
+#                    self.acuhistax.yaxis.labelpad = 10
+#                    self.acuhistax.xaxis.labelpad = -0.5
+                    self.acuhistax.set_xlim([0,self.s.V.max()+0.5])
+                    self.acuhistax.set_ylim([0,np.ceil(self.s.MB.max())])
+                    self.acuhistax.hist(self.s.Vacu[int((i-int((40./self.dt)))/delta)],bins=np.arange(0, self.s.V.max() + 0.2, 0.3),density=True)
+                    self.acuhistax.plot(self.vsplot,self.s.MBacu[int((i-int((40./self.dt)))/delta)],'r-')
+                    self.acuhistcanvas.draw()
+                    plt.pause(pause)
+
+            elif(self.plotmenu.current_tab.text == '<|x(t)-x(0)|^2>'):
+#                t = np.arange(self.dt,self.T+10+self.dt,self.dt)
+                self.extraplotax.plot(self.tplot[self.prev_i_ex:i],self.s.X2[self.prev_i_ex:i],'g-')
+                self.extraplotcanvas.draw()
+                self.prev_i_ex = i
+                plt.pause(pause)
+
+        self.counter += 1
+
+    def setplotlimits(self,simulation):
+        """JV: This function updates the limits of the matplotlib plots. If there is a simulation loaded, it will adapt the plots limits to it."""
+
+        #JV: Energy plot
+        self.enplotax.clear()
+        self.enplotax.set_xlabel('t')
+        self.enplotax.set_ylabel('Energy')
+        self.enplot.subplots_adjust(0.125,0.19,0.9,0.9)
+        self.enplotax.yaxis.labelpad = 10
+        self.enplotax.xaxis.labelpad = -0.5
+
+        #JV: Momentum plot
+        self.histax.clear()
+        self.histax.set_xlabel('v')
+        self.histax.set_ylabel('Number of particles relative')
+        self.hist.subplots_adjust(0.125,0.19,0.9,0.9)
+        self.histax.yaxis.labelpad = 10
+        self.histax.xaxis.labelpad = -0.5
+
+        #JV: Accumulated momentum
+        self.acuhistax.clear()
+        self.acuhistax.set_xlabel('v')
+        self.acuhistax.set_ylabel('Number of particles relative')
+        self.acuhist.subplots_adjust(0.125,0.19,0.9,0.9)
+        self.acuhistax.yaxis.labelpad = 10
+        self.acuhistax.xaxis.labelpad = -0.5
+
+        #JV: Entropy/
+        if(self.our_submenu == 'Brownian'):
+            self.extraplotax.clear()
+            self.extraplotax.set_xlabel('t')
+            self.extraplotax.set_ylabel(r'$\langle|x(t)-x(0)|^{2}\rangle$')
+        else:
+            self.extraplotax.clear()
+            self.extraplotax.set_xlabel('t')
+            self.extraplotax.set_ylabel('Entropy')
+
+        if(simulation):
+            n = int(self.T/self.dt)
+            self.tplot = np.arange(self.dt,self.T+10+self.dt,self.dt)
+            self.vsplot = np.linspace(0,self.s.V.max()+0.5,100)
+
+            #JV: Energy plot
+            self.enplotax.set_xlim([0,self.T])
+            #JV: We make the red line a little wider so we can see it and doesn't get hidden (in some cases) by the total energy
+            self.enplotax.set_ylim([0,(self.s.K[0:n].max()+self.s.U[0:n].max())+np.uint(self.s.K[0:n].max()+self.s.U[0:n].max())/40])
+            self.enplotax.plot(0,self.s.K[0],'r-',label = 'Kinetic Energy', linewidth = 2.2)
+            self.enplotax.plot(0,self.s.U[0],'b-',label = 'Potential Energy')
+            self.enplotax.plot(0,self.s.K[0]+self.s.U[0],'g-',label = 'Total Energy')
+            self.enplotax.legend(loc=7)
+
+            #JV: Momentum plot
+            self.histax.set_xlim([0,self.s.V.max()+0.5])
+            self.histax.set_ylim([0,np.ceil(self.s.MB.max())])
+
+            #JV: Accumulated momentum
+            self.acuhistax.set_xlim([0,self.s.V.max()+0.5])
+            self.acuhistax.set_ylim([0,np.ceil(self.s.MB.max())])
+
+            #JV: Entropy/
+            if(self.our_submenu == 'Brownian'):
+                if(self.simulation_type == "Brownian"):
+                    self.extraplotax.set_xlim([0,self.T])
+                    self.extraplotax.set_ylim([0,self.s.X2.max()+self.s.X2.max()*0.05])
+                else:
+                    self.extraplotax.set_xlim([0,self.T])
+                    self.extraplotax.set_ylim([0,5])
+            else:
+                if(self.simulation_type != "Brownian"):
+                    self.extraplotax.set_xlim([0,self.T])
+                    self.extraplotax.set_ylim([self.s.entropy.min(),self.s.entropy.max()+self.s.entropy.max()*0.05])
+                else:
+                    self.extraplotax.set_xlim([0,self.T])
+                    self.extraplotax.set_ylim([0,5])
+        else:
+            #JV: Energy plot
+            self.enplotax.set_xlim([0,self.T])
+            self.enplotax.set_ylim([0,25])
+
+            #JV: Momentum plot
+            self.histax.set_xlim([0,1])
+            self.histax.set_ylim([0,25])
+
+            #JV: Accumulated momentum
+            self.acuhistax.set_xlim([0,1])
+            self.acuhistax.set_ylim([0,25])
+
+            #JV: Entropy/
+            self.extraplotax.set_xlim([0,self.T])
+            self.extraplotax.set_ylim([0,5])
+
+        #JV: Now draw this changes in the plot
+        self.enplotcanvas.draw()
+        self.histcanvas.draw()
+        self.acuhistcanvas.draw()
+        self.extraplotcanvas.draw()
 
     def preview(self,interval):
         """Draws the previews of the particles when the animation is not running or before adding
@@ -1084,8 +1378,6 @@ class SimulationScreen(Screen):
         n = int(self.T/self.dt)
         i = int(self.time/self.dt)
 
-        delta = 5./self.dt
-
         if(self.our_menu == "Walls"):
             self.plotbox.canvas.add(self.obj)
 
@@ -1099,77 +1391,6 @@ class SimulationScreen(Screen):
             self.progressbar.value = (self.time/self.T)*100 #Updates the progress bar.
 
             self.acucounter += 1
-
-            if(self.plotmenu.current_tab.text == 'Energy'): #JV: instantaneous energy graphic
-                #JV: The +10 is because we actually compute 10 units of time more than we represent, check computation() fucntion for more detail
-
-                if(self.acucounter % self.update_plots == 0):
-                    t = np.arange(self.dt,self.T+10+self.dt,self.dt)
-
-                    self.enplotax.clear()
-                    self.enplotax.set_xlabel('t')
-                    self.enplotax.set_ylabel('Energy')
-
-                    self.enplotax.set_xlim([0,self.T])
-                    self.enplotax.set_ylim([0,(self.s.K[0:n].max()+self.s.U[0:n].max())+np.uint(self.s.K[0:n].max()+self.s.U[0:n].max())/40])
-
-                    #JV: We make the red line a little wider so we can see it and doesn't get hidden (in some cases) by the total energy
-                    self.enplotax.plot(t[0:i],self.s.K[0:i],'r-',label = 'Kinetic Energy', linewidth = 2.2)
-                    self.enplotax.plot(t[0:i],self.s.U[0:i],'b-',label = 'Potential Energy')
-                    self.enplotax.plot(t[0:i],self.s.K[0:i]+self.s.U[0:i],'g-',label = 'Total Energy')
-
-                    self.enplotax.legend(loc=7)
-
-                    self.enplotcanvas.draw()
-
-            elif(self.plotmenu.current_tab.text == 'Momentum'): #Instantaneous momentum histogram
-
-                if(self.acucounter % self.update_plots == 0):
-                    vs = np.linspace(0,self.s.V.max()+0.5,100) #JV: The +0.5 is because we want to see the whole last possible bar
-
-                    self.histax.clear()
-                    self.histax.set_xlabel('v')
-                    self.histax.set_ylabel('Number of particles relative')
-                    self.histax.set_xlim([0,self.s.V.max()+0.5])
-                    self.histax.set_ylim([0,np.ceil(self.s.MB.max())])
-
-                    self.histax.hist(self.s.V[i,:],bins=np.arange(0,self.s.V.max()+1, 0.334),rwidth=0.75,density=True,color=[0.0,0.0,1.0])
-                    self.histax.text(vs[np.argmax(self.s.MB[i,:])-int(len(vs)*0.2)],self.s.MB[i,:].max(),"T = "+str(np.round(self.s.T[i],decimals=3)), fontsize=15, color = "red", alpha = 0.85)
-                    self.histax.plot(vs,self.s.MB[i,:],'r-')
-                    self.histcanvas.draw()
-
-
-            elif(self.plotmenu.current_tab.text == 'Acu'): #Accumulated momentum histogram
-                self.acuhistax.clear() #JV: We clean the graphic although we don't draw anything yet (to clean anything left in a previous simulation)
-                if(self.time > 40.):
-
-                    if(self.acucounter % self.update_plots == 0):
-                        vs = np.linspace(0,self.s.V.max()+0.5,100)
-
-                        self.acuhistax.set_xlabel('v')
-                        self.acuhistax.set_ylabel('Number of particles relative')
-                        self.acuhistax.set_xlim([0,self.s.V.max()+0.5])
-                        self.acuhistax.set_ylim([0,np.ceil(self.s.MB.max())])
-
-                        #print(i,n,delta,int((i-int((40./self.dt)))/delta),len(self.s.Vacu))
-                        self.acuhistax.hist(self.s.Vacu[int((i-int((40./self.dt)))/delta)],bins=np.arange(0, self.s.V.max() + 0.2, 0.2),density=True)
-                        self.acuhistax.plot(vs,self.s.MBacu[int((i-int((40./self.dt)))/delta)],'r-')
-
-                        self.acuhistcanvas.draw()
-
-            elif(self.plotmenu.current_tab.text == 'Entropy'):
-                if(self.acucounter % self.update_plots == 0):
-                    t = np.arange(self.dt,self.T+10+self.dt,self.dt)
-
-                    self.extraplotax.clear()
-                    self.extraplotax.set_xlabel('t')
-                    self.extraplotax.set_ylabel('Entropy')
-
-                    self.extraplotax.set_xlim([0,self.T])
-                    self.extraplotax.set_ylim([self.s.entropy.min(),self.s.entropy.max()+self.s.entropy.max()*0.05])
-                    self.extraplotax.plot(t[0:i],self.s.entropy[0:i],'g-')
-
-                    self.extraplotcanvas.draw()
 
         elif(self.our_submenu == 'Subsystems'):
             with self.plotbox.canvas:
@@ -1185,84 +1406,6 @@ class SimulationScreen(Screen):
             self.progressbar.value = (self.time/self.T)*100 #Updates the progress bar.
 
             self.acucounter += 1
-
-            #JV: Here we do the graphics for this submenu, check the comments from the previous submenu for more info
-            #JV: We will draw the two subsystems in two diferent colors
-            if(self.plotmenu.current_tab.text == 'Energy'):
-
-                if(self.acucounter % self.update_plots == 0):
-                    t = np.arange(self.dt,self.T+10+self.dt,self.dt)
-
-                    self.enplotax.clear()
-                    self.enplotax.set_xlabel('t')
-                    self.enplotax.set_ylabel('Energy')
-
-                    self.enplotax.set_xlim([0,self.T])
-                    self.enplotax.set_ylim([0,(self.s.K[0:n].max()+self.s.U[0:n].max())+np.uint(self.s.K[0:n].max()+self.s.U[0:n].max())/40])
-
-                    self.enplotax.plot(t[0:i],self.s.K[0:i],'r-',label = 'Kinetic Energy', linewidth = 2.2)
-                    self.enplotax.plot(t[0:i],self.s.U[0:i],'b-',label = 'Potential Energy')
-                    self.enplotax.plot(t[0:i],self.s.K[0:i]+self.s.U[0:i],'g-',label = 'Total Energy')
-
-                    self.enplotax.legend(loc=7)
-
-                    self.enplotcanvas.draw()
-
-            elif(self.plotmenu.current_tab.text == 'Momentum'): #Instantaneous momentum histogram
-
-                if(self.acucounter % self.update_plots == 0):
-                    vs = np.linspace(0,self.s.V.max()+0.5,100) #JV: The +0.5 is because we want to see the whole last possible bar
-
-                    self.histax.clear()
-                    self.histax.set_xlabel('v')
-                    self.histax.set_ylabel('Number of particles relative')
-                    self.histax.set_xlim([0,self.s.V.max()+0.5])
-                    self.histax.set_ylim([0,np.ceil(self.s.MB.max())])
-
-                    self.histax.hist([self.s.V[i,0:self.n1**2],self.s.V[i,self.n1**2:self.n1**2+self.n2**2]],bins=np.arange(0, self.s.V.max() + 1, 0.334),rwidth=0.8,density=True,color=[[0.32,0.86,0.86],[0.43,0.96,0.16]])
-                    #JV: We now plot the texts that show the temperature of each types of particles
-#                    self.histax.text(vs[np.argmax(self.s.MB1[i,:])],self.s.MB1[i,:].max()+self.s.MB1[i,:].max()*0.05,"T1 = "+str(np.round(self.s.T1[i],decimals=3)), fontsize=15, color = "blue", alpha = 0.75)
-#                    self.histax.text(vs[np.argmax(self.s.MB2[i,:])],self.s.MB2[i,:].max()-self.s.MB2[i,:].max()*0.05-0.075,"T2 = "+str(np.round(self.s.T2[i],decimals=3)), fontsize=15, color = "green", alpha = 0.75)
-                    self.histax.text(self.s.V.max()-2.5,0.8,"T1 = "+str(np.round(self.s.T1[i],decimals=3)), fontsize=15, color = "blue", alpha = 0.75)
-                    self.histax.text(self.s.V.max()-1,0.8,"T2 = "+str(np.round(self.s.T2[i],decimals=3)), fontsize=15, color = "green", alpha = 0.75)
-                    self.histax.text(vs[np.argmax(self.s.MB[i,:])-int(len(vs)*0.2)],self.s.MB[i,:].max(),"T = "+str(np.round(self.s.T[i],decimals=3)), fontsize=15, color = "red", alpha = 0.85)
-                    self.histax.plot(vs,self.s.MB1[i,:],'b-', alpha = 0.5)
-                    self.histax.plot(vs,self.s.MB2[i,:],'g-', alpha = 0.5)
-                    self.histax.plot(vs,self.s.MB[i,:],'r-')
-                    self.histcanvas.draw()
-
-
-            elif(self.plotmenu.current_tab.text == 'Acu'): #Accumulated momentum histogram
-                self.acuhistax.clear()
-                if(self.time > 40.):
-
-                    if(self.acucounter % self.update_plots == 0):
-                        vs = np.linspace(0,self.s.V.max()+0.5,100)
-
-                        self.acuhistax.set_xlabel('v')
-                        self.acuhistax.set_ylabel('Number of particles relative')
-                        self.acuhistax.set_xlim([0,self.s.V.max()+0.5])
-                        self.acuhistax.set_ylim([0,np.ceil(self.s.MB.max())])
-
-
-                        self.acuhistax.hist(self.s.Vacu[int((i-int((40./self.dt)))/delta)],bins=np.arange(0, self.s.V.max() + 0.2, 0.2),density=True)
-                        self.acuhistax.plot(vs,self.s.MBacu[int((i-int((40./self.dt)))/delta)],'r-')
-
-                        self.acuhistcanvas.draw()
-
-            elif(self.plotmenu.current_tab.text == 'Entropy'):
-                if(self.acucounter % self.update_plots == 0):
-                    t = np.arange(self.dt,self.T+10+self.dt,self.dt)
-
-                    self.extraplotax.clear()
-                    self.extraplotax.set_xlabel('t')
-                    self.extraplotax.set_ylabel('Entropy')
-
-                    self.extraplotax.set_xlim([0,self.T])
-                    self.extraplotax.set_ylim([self.s.entropy.min(),self.s.entropy.max()+self.s.entropy.max()*0.05])
-                    self.extraplotax.plot(t[0:i],self.s.entropy[0:i],'g-')
-
-                    self.extraplotcanvas.draw()
 
         elif(self.our_submenu == 'Brownian'):
             with self.plotbox.canvas:
@@ -1287,75 +1430,6 @@ class SimulationScreen(Screen):
             self.progressbar.value = (self.time/self.T)*100 #Updates the progress bar.
 
             self.acucounter += 1
-
-            if(self.plotmenu.current_tab.text == 'Energy'):
-                if(self.acucounter % self.update_plots == 0):
-                    t = np.arange(self.dt,self.T+10+self.dt,self.dt)
-
-                    self.enplotax.clear()
-                    self.enplotax.set_xlabel('t')
-                    self.enplotax.set_ylabel('Energy')
-
-                    self.enplotax.set_xlim([0,self.T])
-                    self.enplotax.set_ylim([0,(self.s.K[0:n].max()+self.s.U[0:n].max())+np.uint(self.s.K[0:n].max()+self.s.U[0:n].max())/40])
-
-                    self.enplotax.plot(t[0:i],self.s.K[0:i],'r-',label = 'Kinetic Energy', linewidth = 2.2)
-                    self.enplotax.plot(t[0:i],self.s.U[0:i],'b-',label = 'Potential Energy')
-                    self.enplotax.plot(t[0:i],self.s.K[0:i]+self.s.U[0:i],'g-',label = 'Total Energy')
-
-                    self.enplotax.legend(loc=7)
-
-                    self.enplotcanvas.draw()
-
-            elif(self.plotmenu.current_tab.text == 'Momentum'): #Instantaneous momentum histogram
-                if(self.acucounter % self.update_plots == 0):
-                    vs = np.linspace(0,self.s.V.max()+0.5,100) #JV: The +0.5 is because we want to see the whole last possible bar
-
-                    self.histax.clear()
-                    self.histax.set_xlabel('v')
-                    self.histax.set_ylabel('Number of particles relative')
-                    self.histax.set_xlim([0,self.s.V.max()+0.5])
-                    self.histax.set_ylim([0,np.ceil(self.s.MB.max())])
-
-                    self.histax.hist([self.s.V[i,0:self.nsmall**2],self.s.V[i,self.nsmall**2:self.nsmall**2+self.nbig**2]],bins=np.arange(0, self.s.V.max() + 1, 0.334),rwidth=0.75,density=True,color=[[0.32,0.86,0.86],[0.43,0.96,0.16]])
-                    self.histax.text(vs[np.argmax(self.s.MB[i,:])-int(len(vs)*0.2)],self.s.MB[i,:].max(),"T = "+str(np.round(self.s.T[i],decimals=3)), fontsize=15, color = "red", alpha = 0.85)
-                    self.histax.plot(vs,self.s.MB[i,:],'r-')
-                    self.histcanvas.draw()
-
-
-            elif(self.plotmenu.current_tab.text == 'Acu'): #Accumulated momentum histogram
-                self.acuhistax.clear()
-                if(self.time > 40.):
-
-                    if(self.acucounter % self.update_plots == 0):
-                        vs = np.linspace(0,self.s.V.max()+0.5,100)
-
-                        self.acuhistax.set_xlabel('v')
-                        self.acuhistax.set_ylabel('Number of particles relative')
-                        self.acuhistax.set_xlim([0,self.s.V.max()+0.5])
-                        self.acuhistax.set_ylim([0,np.ceil(self.s.MB.max())])
-
-
-                        self.acuhistax.hist(self.s.Vacu[int((i-int((40./self.dt)))/delta)],bins=np.arange(0, self.s.V.max() + 0.2, 0.2),density=True)
-                        self.acuhistax.plot(vs,self.s.MBacu[int((i-int((40./self.dt)))/delta)],'r-')
-
-                        self.acuhistcanvas.draw()
-
-            elif(self.plotmenu.current_tab.text == '<|x(t)-x(0)|^2>'):
-                if(self.acucounter % self.update_plots == 0):
-                    t = np.arange(self.dt,self.T+10+self.dt,self.dt)
-
-                    self.extraplotax.clear()
-                    self.extraplotax.set_xlabel('t')
-                    self.extraplotax.set_ylabel(r'$\langle|x(t)-x(0)|^{2}\rangle$')
-
-
-                    self.extraplotax.set_xlim([0,self.T])
-                    self.extraplotax.set_ylim([0,self.s.X2.max()+self.s.X2.max()*0.05])
-                    self.extraplotax.plot(t[0:i],self.s.X2[0:i],'g-')
-
-                    self.extraplotcanvas.draw()
-
 
         if(self.our_menu == "Walls"):
             w = self.plotbox.size[0]
@@ -1405,53 +1479,6 @@ class SimulationScreen(Screen):
                         self.previewlist.append([x[k],y[k],vx[k]*self.R,vy[k]*self.R])
 
             self.stop()
-
-
-        """This block of code is for building the accumulated histograms as the animation progresses, this
-        is extremely slow and will slowdown the program, I will leave it if you want to take a look at it."""
-
-
-#        if(self.plotmenu.current_tab.text == 'Acu'):
-#            vs = np.linspace(0,self.s.V.max(),100)
-#
-#
-#            self.acuhistax.clear()
-#            self.acuhistax.set_xlabel('v')
-#            self.acuhistax.set_xlim([0,self.s.V.max()])
-#            self.acuhistax.set_ylim([0,np.ceil(self.s.MB.max())])
-#
-#
-#            self.acuhistax.hist(self.Vacu,bins=np.arange(0, self.s.V.max() + 0.5, 0.5),density=True)
-#            self.acuhistax.plot(vs,self.MBacu,'r-')
-#            self.acuhistcanvas.draw()
-
-#        if(self.time>self.T/2. and self.acucounter == int(0.4/self.dt)):
-#            print('hola')
-#            self.Vacu = np.append(self.Vacu,self.s.V[i,:])
-#            Temp = np.sum(self.Vacu**2)/(self.Vacu.size - 2)
-#            self.MBacu = (vs/(Temp)*np.exp(-vs**2/(2*Temp)))
-#            print(self.Vacu.shape)
-#
-#        if(self.acucounter >= int(1./self.dt)):
-  #            self.acucounter = 0
-#
-#        if(self.time >= self.T):
-#            self.time = 0.
-#            self.Vacu = np.array([])
-
-#
-## Declare both screens
-#class MenuScreen(Screen):
-#    pass
-#
-#class SettingsScreen(Screen):
-#    pass
-#
-## Create the screen manager
-#sm = ScreenManager()
-#sm.add_widget(MenuScreen(name='menu'))
-#sm.add_widget(SettingsScreen(name='settings'))
-
 
 @jit(nopython=True)
 def close_particles_list(r2,m,N,L):
@@ -1695,7 +1722,7 @@ class GameScreen(Screen):
 
         self.time = 0.
         #JV: Here you can modify the time step, no time of computation here because it will keep playing until we stop it
-        self.dt = 0.002 #JV: Because the time of computation is a number that ends with 0 or 5 (we can change this in the kivy file), we
+        self.dt = 0.003 #JV: Because the time of computation is a number that ends with 0 or 5 (we can change this in the kivy file), we
         # need a dt that is multiple of 5 (0,01;0,015;...), if we don't do this we get some strange errors (...)
 
         #Set flags to False
@@ -1705,7 +1732,7 @@ class GameScreen(Screen):
         self.previewlist = []
         self.progress = 0.
         self.n = 6 #JV: Modify this value if at the start you want to show more than one particle in the simulation (as a default value)
-        self.temp = 3 #JV: Initial temperature of the particles
+        self.temp = 10 #JV: Initial temperature of the particles
 
         self.mass = 1 #JV: change this if you want to change the initial mass
 
@@ -1747,7 +1774,7 @@ class GameScreen(Screen):
             self.bouncing_static = np.zeros(self.n**2)
 
         #JV: Here we initialize the intial values of the widht and the height of the wall that is controlled by the user
-        self.wall_w = 5
+        self.wall_w = 3
         self.wall_h = 12
 
         self.add_particle_list(False)
@@ -1848,6 +1875,7 @@ class GameScreen(Screen):
         if(self.running==True):
             self.paused = True
             self.timer.cancel()
+            self.timer2.cancel()
             self.running = False
         else:
             pass
@@ -1936,7 +1964,7 @@ class GameScreen(Screen):
 
         r2 = np.square(dx)+np.square(dy)
 
-        if(np.round((self.time/self.dt*self.dt)%0.5,2) == 0): #JV: every certain amount of steps we update the list
+        if(np.round((self.time/self.dt*self.dt)%0.3,2) == 0): #JV: every certain amount of steps we update the list
 #            print(self.time)
             self.close_list = close_particles_list(r2,self.Nlist,N,self.L) #JV: matrix that contains in every row the indexs of the m closest particles
 
