@@ -4,6 +4,7 @@
 	MenuScreen:
 	SimulationScreen:
 	GameScreen:
+	DemoScreen:
 
 <MenuScreen>:
 	name: 'menu'
@@ -26,7 +27,7 @@
 			size_hint_y: 2
 
 			Button:
-				id: s_to_g
+				id: m_to_s
 				background_color: (0, 0, 0, 1)
 				markup: True
 				text: '[color=009fe4]Simulation[/color]'
@@ -41,7 +42,7 @@
 
 			Button:
 				size_hint_y: 1
-				id: s_to_g
+				id: m_to_g
 				background_color: (0, 0, 0, 1)
 				markup: True
 				text: '[color=159fe4]Game[/color]'
@@ -55,12 +56,12 @@
 						rectangle: self.x, self.y, self.width, self.height
 
 			Button:
-				id: info_id
+				id: m_to_d
 				background_color: (0, 0, 0, 1)
 				markup: True
-				text: '[color=2b9fe4]...[/color]'
+				text: '[color=159fe4]Demo[/color]'
 				font_size: self.height
-				#on_release: Factory.InfoPopup().open()
+				on_press: root.transition_MD()
 				canvas.before:
 					Color:
 						rgba: .5, .5, .5, 1
@@ -831,7 +832,160 @@
 											max: 10
 											step: 2
 											on_touch_up: root.on_touch_Slider()
+<DemoScreen>:
+	name: 'demo'
+	orientation: 'horizontal'
 
+	plotbox: plot_box
+	speedbutton: speed_button
+	simulationlabel: simulation_label
+	simulationname: simulation_name
+
+	plotmenu: plot_menu
+	progressbar: progress_bar
+	enplotbox: enplot_box
+	histbox: hist_box
+	acuhistbox: acuhist_box
+	extraplotbox: extraplot_box
+	extraplottab: extraplot_tab
+
+	infobox: info_box
+	infolabel: info_label
+
+	BoxLayout:
+		BoxLayout:
+			id: plot_box
+			size_hint: (None, 1)
+			size: (self.height, self.height)
+			on_touch_down: root.update_pos(args[1])
+
+		BoxLayout:
+			orientation: 'vertical'
+			size_hint: (0.25, 1)
+			BoxLayout:
+				size_hint: (1, 0.1)
+				orientation: 'horizontal'
+				Button:
+					#text: 'Play'
+					background_normal: 'icons/play.png'
+					background_down: 'icons/playb.png'
+					on_press: root.play()
+				Button:
+					#text: 'Pause'
+					background_normal: 'icons/pause.png'
+					background_down: 'icons/pauseb.png'
+					on_press: root.pause()
+				Button:
+					#text: 'Stop'
+					background_normal: 'icons/stop.png'
+					background_down: 'icons/stopb.png'
+					on_press: root.stop()
+				Button:
+					id: speed_button
+					background_normal: 'icons/black.png'
+					font_size: '30sp'
+					markup: True
+					on_press: root.change_speed()
+				Button:
+					id: back_to_menu
+					background_normal: 'icons/back_to_menu.png'
+					background_down: 'icons/back_to_menu.png'
+					on_press: root.transition_DM()
+			BoxLayout:
+				size_hint: (1, 0.1)
+				orientation: 'horizontal'
+				Button:
+					#text: 'Prev_simulation'
+					background_normal: 'icons/arrow_left.png'
+					background_down: 'icons/arrow_leftb.png'
+					on_press: root.prev_simulation()
+				Label:
+					id: simulation_label
+					text: 'Ready'
+					canvas.before:
+						Rectangle:
+							pos: self.pos
+							size: self.size
+							source: "icons/black.png"
+				Button:
+					#text: 'Next_simulation'
+					background_normal: 'icons/arrow_right.png'
+					background_down: 'icons/arrow_rightb.png'
+					on_press: root.next_simulation()
+			BoxLayout:
+				size_hint: (1, 0.1)
+				orientation: 'horizontal'
+				Label:
+					id: simulation_name
+					text: ''
+					canvas.before:
+						Rectangle:
+							pos: self.pos
+							size: self.size
+							source: "icons/black.png"
+					size_hint: (0.4, 1)
+			ProgressBar:
+				id: progress_bar
+				canvas.before:
+					Rectangle:
+						pos: self.pos
+						size: self.size
+						source: "icons/black.png"
+				max: 100
+				size_hint: (1, 0.01)
+			BoxLayout:
+				size_hint: (1, 0.5)
+
+				orientation: 'horizontal'
+				canvas.before:
+					Color:
+						rgb: 0/255.0, 0/255.0, 0/255.0
+					Rectangle:
+						pos: self.pos
+						size: self.size
+				TabbedPanel:
+					id: plot_menu
+					do_default_tab: False
+					tab_width: 125
+					background_image: 'icons/black.png'
+					TabbedPanelItem:
+						text: 'Energy'
+						background_down: 'icons/blue.png'
+						BoxLayout:
+							id: enplot_box
+					TabbedPanelItem:
+						text: 'Momentum'
+						background_down: 'icons/blue.png'
+						BoxLayout:
+							id: hist_box
+					TabbedPanelItem:
+						text: 'Acu'
+						background_down: 'icons/blue.png'
+						BoxLayout:
+							id: acuhist_box
+					TabbedPanelItem:
+						text: 'Entropy'
+						background_down: 'icons/blue.png'
+						id: extraplot_tab
+						BoxLayout:
+							id: extraplot_box
+			BoxLayout:
+				id: info_box
+				orientation: "horizontal"
+				size_hint: (1, 0.5)
+				do_default_tab: False
+				tab_width: 100
+				Image:
+					id: info_label
+					source: "icons/gray_demo.png"
+					canvas.before:
+						Rectangle:
+							pos: self.pos
+							size: self.size
+							source: "icons/gray_demo.png"
+					size_hint: (1, 0.9)
+					halign:"left"
+					valign: "top"
 <GameScreen>:
 	name: 'game'
 
@@ -930,16 +1084,38 @@
 				on_press: root.cancel()
 
 <settingswindow>:
+	si_button: sibutton
+	reduced_button: reducedbutton
 	rbig_slider: rbigslider
 	boxlength_slider: boxlengthslider
 	dt_slider: dtslider
+	dt_units_label: dtunitslabel
 	temp1_slider: temp1slider
+	units_temp1: unitstemp1
 	temp2_slider: temp2slider
+	units_temp2: unitstemp2
 	compact_slider: compactslider
 	BoxLayout:
 		pos_hint: {'right': 0.9, 'top': 1}
 		size_hint: (0.9,0.8)
 		orientation: 'vertical'
+		BoxLayout:
+			orientation: 'horizontal'
+			Label:
+				text: 'Simulation units: '
+				size_hint: (0.4, 0.6)
+			Button:
+				id: sibutton
+				size_hint: (0.3, 0.6)
+				text: "SI Units"
+				background_down: 'icons/blue.png'
+				on_press: root.cancel("si")
+			Button:
+				id: reducedbutton
+				size_hint: (0.3, 0.6)
+				text: "Reduced Units"
+				background_down: 'icons/blue.png'
+				on_press: root.cancel("red")
 		BoxLayout:
 			orientation: 'horizontal'
 			Label:
@@ -955,7 +1131,6 @@
 				min: 1
 				max: 5
 				step: 1
-				on_touch_up: root.change_settings()
 		BoxLayout:
 			orientation: 'horizontal'
 			Label:
@@ -971,7 +1146,6 @@
 				min: 200
 				max: 400
 				step: 10
-				on_touch_up: root.change_settings()
 			Label:
 				text: 'Angstroms (10[sup]-10[/sup]m)'
 				markup: True
@@ -991,7 +1165,6 @@
 				min: 1
 				max: 2
 				step: 0.1
-				on_touch_up: root.change_settings()
 		BoxLayout:
 			orientation: 'horizontal'
 			Label:
@@ -1007,7 +1180,10 @@
 				min: 1
 				max: 5
 				step: 1
-				on_touch_up: root.change_settings()
+			Label:
+				id: unitstemp1
+				text: " "
+				size_hint: (0.05, 1)
 		BoxLayout:
 			orientation: 'horizontal'
 			Label:
@@ -1023,7 +1199,10 @@
 				min: 1
 				max: 5
 				step: 1
-				on_touch_up: root.change_settings()
+			Label:
+				id: unitstemp2
+				text: " "
+				size_hint: (0.05, 1)
 		BoxLayout:
 			orientation: 'horizontal'
 			Label:
@@ -1039,7 +1218,10 @@
 				min: 0.0005
 				max: 0.02
 				step: 0.0005
-				on_touch_up: root.change_settings()
+			Label:
+				id: dtunitslabel
+				text: " "
+				size_hint: (0.1, 1)
 	BoxLayout:
 		pos_hint: {'right': 1}
 		orientation: 'horizontal'
@@ -1047,4 +1229,4 @@
 		height: 60
 		Button:
 			text: 'Exit'
-			on_press: root.cancel()
+			on_press: root.cancel("")

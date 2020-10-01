@@ -109,9 +109,9 @@ the computation time will be shorter.
 #JV: We then "config" the default window size
 #JV: We have to put these lines first in the code in order to work, why? "Kivy things my friend"
 from kivy.config import Config
-Config.set('kivy','window_icon','icons/ub.png')
-Config.set('graphics', 'width', '1200')
-Config.set('graphics', 'height', '700')
+Config.set('kivy','window_icon','icons/icona.png')
+Config.set('graphics', 'width', '1300')
+Config.set('graphics', 'height', '750')
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -157,13 +157,12 @@ class loadwindow(FloatLayout):
 
 class settingswindow(FloatLayout):
     change_settings = ObjectProperty(None)
+    change_units = ObjectProperty(None)
     cancel = ObjectProperty(None)
 
 
 class SimulationScreen(Screen):
     charge = 1.
-    blit = True #JV: When blit is True, the plotting is much faster, but in some articles mention that blit can cause strong memory leakage
-
     particles = np.array([])
 
     plot_texture = ObjectProperty()
@@ -172,7 +171,7 @@ class SimulationScreen(Screen):
 
     #JV: Moment histogram
     hist = Figure()
-    histax = hist.add_subplot(111, xlabel='v', ylabel = 'Number of particles relative')
+    histax = hist.add_subplot(111, xlabel='v', ylabel = 'Number of particles')
     histax.set_xlim([0,1])
     histax.set_ylim([0,25])
     hist.subplots_adjust(0.125,0.19,0.9,0.9) #JV: We ajust the subplot to see whole axis and their labels
@@ -182,7 +181,7 @@ class SimulationScreen(Screen):
 
     #JV: Acomulated moment histogram
     acuhist = Figure()
-    acuhistax = acuhist.add_subplot(111, xlabel='v', ylabel = 'Number of particles relative')
+    acuhistax = acuhist.add_subplot(111, xlabel='v', ylabel = 'Number of particles')
     acuhistax.set_xlim([0,1])
     acuhistax.set_ylim([0,25])
     acuhist.subplots_adjust(0.125,0.19,0.9,0.9)
@@ -192,30 +191,13 @@ class SimulationScreen(Screen):
 
     #JV: Energy (Sub)Plot
     enplot = Figure()
-#    enplot = plt.figure()
-#    enplot, (enplotax) = plt.subplots(1)
-#    enplotax1 = enplot.add_subplot(2, 1, 1)
-#    enplotax2 = enplot.add_subplot(2, 1, 2)
     enplotax = enplot.add_subplot(111, xlabel='t', ylabel = 'Energy')
     enplotax.set_xlim([0,1])
     enplotax.set_ylim([0,25])
-#    enplotax.set_xlim([0,60]) #JV: This initial value should change if we change the total time of computation
-#    enplotax.set_ylim([0,25])
-#    img = enplotax.imshow(X, vmin=-1, vmax=1, interpolation="None", cmap="RdBu")
     enplot.subplots_adjust(0.125,0.19,0.9,0.9)
     enplotax.yaxis.labelpad = 10
     enplotax.xaxis.labelpad = -0.5
-
-#    line, = enplotax.plot(np.array([0]),np.array([0]))
-#    line, = enplotax.plot([], [], "-", lw = 2)
-#    text = enplotax.text(0.8,0.5, "")
-
     enplotcanvas = FigureCanvasKivyAgg(enplot)
-#    enplot.canvas.draw()
-
-    if blit:
-        enplotaxbackground = enplotcanvas.copy_from_bbox(enplotax.bbox)
-    plt.show(block = False)
 
     #JV: Xpos plot
     extraplot = Figure()
@@ -278,6 +260,18 @@ class SimulationScreen(Screen):
         self.simulation = False #JV: This bool will be true when we will have calculated/loaded a simulation
         self.simulation_type = "" #JV: This variable will store the type of simulation that we have calculated
 
+        self.si_units = False #JV: We start the simulation in reduced units, but the user is able to change this to SIUnits in the "Advanced Settings" Pop-Up
+
+        #JV: Here we save the maximum, the minimum and the step values of the slider in the advanced-settings pop-up because we will need it. If you update the values in the Kivy file update this values aswell.
+        self.dt_slider_min = 0.0005
+        self.dt_slider_max = 0.02
+        self.dt_slider_step = 0.0005
+
+        #JV: And we do the same for the temperatures. Change if you modify this values in the Kivy file.
+        self.temp_slider_min = 1
+        self.temp_slider_max = 5
+        self.temp_slider_step = 1
+
         #Set flags to False
         self.running = False #Checks if animation is running
         self.paused = False #Checks if animation is paused
@@ -312,6 +306,7 @@ class SimulationScreen(Screen):
         self.R = 3.405 #A
         self.L = 200. #A
         self.M = 0.04 #kg/mol
+        # self.m = 6.6323 * 10^-26 #kg
 
         #JV: This group will contain the two lines that form the wall in the "Walls" menu
         self.obj = InstructionGroup()
@@ -333,7 +328,6 @@ class SimulationScreen(Screen):
 
     def update_pos(self,touch):
         """This function updates the position parameters when you click the screen"""
-
         w = self.plotbox.size[0]
         h = self.plotbox.size[1]
         b = min(w,h)
@@ -445,28 +439,19 @@ class SimulationScreen(Screen):
                 if(self.menu_list[i].current_tab.text  == 'Random Lattice' and not(self.our_submenu == 'Random Lattice')):
                     self.stop()
                     self.our_submenu = 'Random Lattice'
+                    self.setplotlimits(self.simulation)
                     self.extraplottab.text = "Entropy"
-                    self.extraplotax.clear()
-                    self.extraplotax.set_xlabel('t')
-                    self.extraplotax.set_ylabel('Entropy')
-                    self.extraplotcanvas.draw()
                     self.add_particle_list(False)
                 elif(self.menu_list[i].current_tab.text  == 'Subsystems' and not(self.our_submenu == 'Subsystems')):
                     self.stop()
                     self.our_submenu = 'Subsystems'
+                    self.setplotlimits(self.simulation)
                     self.extraplottab.text = "Entropy"
-                    self.extraplotax.clear()
-                    self.extraplotax.set_xlabel('t')
-                    self.extraplotax.set_ylabel('Entropy')
-                    self.extraplotcanvas.draw()
                     self.add_particle_list(False)
                 elif(self.menu_list[i].current_tab.text  == 'Brownian' and not(self.our_submenu == 'Brownian')):
                     self.stop()
                     self.our_submenu = 'Brownian'
-                    self.extraplotax.clear()
-                    self.extraplotax.set_xlabel('t')
-                    self.extraplotax.set_ylabel(r'$\langle|x(t)-x(0)|^{2}\rangle$')
-                    self.extraplotcanvas.draw()
+                    self.setplotlimits(self.simulation)
                     self.extraplottab.text = "<|x(t)-x(0)|^2>"
                     self.add_particle_list(False)
                 else:
@@ -497,7 +482,17 @@ class SimulationScreen(Screen):
 
     def add_particle_list(self,inversion):
 
-        self.stop() #I stop the simultion to avoid crashes
+        #JV: We do the same as the stop() function but we do not include the update on the plots because that slows the program.
+        self.pause()
+        self.paused = False
+        self.time = 0
+        self.obj2.clear()
+        self.plotbox.canvas.clear()
+        self.progressbar.value = 0 #JV: We set the progress bar to 0
+        #JV: Restart the counters
+        self.acucounter = 0
+        self.prev_i_en = 0
+        self.prev_i_ex = 0
 
         self.reset_particle_list();
 
@@ -517,7 +512,12 @@ class SimulationScreen(Screen):
                 else:
                     x,y = np.linspace(-self.L/2*0.9/self.compact,self.L/2*0.9/self.compact,self.n),np.linspace(-self.L/2*0.9/self.compact,self.L/2*0.9/self.compact,self.n)
 
-                temp = self.temp1
+                #JV: Physystem.py works in reduced units, so we need to make sure that we are sending the values in this units
+                if(self.si_units):
+                    temp = int(np.round((self.temp1 / 116.03),0))
+                else:
+                    temp = self.temp1
+
                 theta = np.random.ranf(self.n**2)*2*np.pi
                 vx,vy = 0.5*np.cos(theta),0.5*np.sin(theta)
 
@@ -573,7 +573,11 @@ class SimulationScreen(Screen):
                     x1,y1 = np.linspace(-self.L/2*0.9,-self.L/2*0.1,self.n1),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n1)
                     x2,y2 = np.linspace(self.L/2*0.1,self.L/2*0.9,self.n2),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n2)
 
-                temp1 = self.temp1
+                if(self.si_units):
+                    temp1 = int(np.round((self.temp1 / 116.03),0))
+                else:
+                    temp1 = self.temp1
+
                 theta1 = np.random.ranf(self.n1**2)*2*np.pi
                 vx1,vy1 = 0.5*np.cos(theta1),0.5*np.sin(theta1)
                 vcm1 = np.array([np.sum(vx1),np.sum(vy1)])/self.n1**2
@@ -586,7 +590,11 @@ class SimulationScreen(Screen):
                     vx1 = (vx1-vcm1[0])*np.sqrt(2*temp1/kin1)
                     vy1 = (vy1-vcm1[1])*np.sqrt(2*temp1/kin1)
 
-                temp2 = self.temp2
+                if(self.si_units):
+                    temp2 = int(np.round((self.temp2 / 116.03),0))
+                else:
+                    temp2 = self.temp2
+
                 theta2 = np.random.ranf(self.n2**2)*2*np.pi
                 vx2,vy2 = 0.5*np.cos(theta2),0.5*np.sin(theta2)
                 vcm2 = np.array([np.sum(vx2),np.sum(vy2)])/self.n2**2
@@ -652,7 +660,11 @@ class SimulationScreen(Screen):
                 else:
                     x,y = np.linspace(-self.L/2*0.9,self.L/2*0.9,self.nsmall),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.nsmall)
 
-                temp = self.temp1
+                if(self.si_units):
+                    temp = int(np.round((self.temp1 / 116.03),0))
+                else:
+                    temp = self.temp1
+
                 theta = np.random.ranf(self.nsmall**2)*2*np.pi
                 vx,vy = 0.5*np.cos(theta),0.5*np.sin(theta)
 
@@ -714,7 +726,6 @@ class SimulationScreen(Screen):
 
     def reset_particle_list(self):
         #Empties particle list
-        self.stop()
         self.particles = np.array([])
         self.previewlist = []
         self.ready = False
@@ -750,10 +761,14 @@ class SimulationScreen(Screen):
         #JV: self.wallpos, self.holesize, self.wallwidth are in Angtroms, so we need to divide it by self.R to have it in reduced units (the units we work in physystem)
         self.s = PhySystem(self.particles,[self.V0,self.R,self.L/self.R,self.our_menu,self.our_submenu,self.n1,self.n2,self.wallpos/self.R,self.holesize/self.R,self.wallwidth/self.R])
 
-        #JV: We put the +10 because we want to genarate more values than the ones we will show, we do that to be able to stop the simulation when it ends, to avoid problems
+        #JV: We put the +20 because we want to genarate more values than the ones we will show, we do that to be able to stop the simulation when it ends, to avoid problems
         #JV: It's not an elegant solution, but it works just fine. Check in the future, we could correct this maybe changing how the time steps work
         #JV: If we modify as we said in the previous line, change the +10 in the part of energy representation in the animate() function
-        self.s.solveverlet(self.T+10,self.dt)
+        if(self.si_units):
+            #JV: Physystem.py works with reduced units, so we need to transform this values if we are using currently the SI Units
+            self.s.solveverlet(int(5 * np.round(self.T /(2.19 * 5)))+20,float(5 * np.round(self.dt /(2.19 * 5), 4)))
+        else:
+            self.s.solveverlet(self.T+20,self.dt)
 
         print('---Computation End---')
         print('Exec time = ',time.time() - start)
@@ -774,9 +789,36 @@ class SimulationScreen(Screen):
         np.savetxt('t_energy.dat',self.s.K + self.s.U,fmt='%10.5f')
         np.savetxt('temps.dat',self.s.T,fmt='%10.5f')
 
+        #JV: We now check if we have to change the units of the calculations, so we get the values in the correct desired units
+        if(self.si_units):
+            #JV: Now this energy values are in aJ (atto-Joules, 10^-18 J)
+            self.s.K = np.array(self.s.K) * self.V0 * 16.022 #JV: This value is to convert from eV to aJ
+            self.s.U = np.array(self.s.U) * self.V0 * 16.022
+
+            #JV: The time values are already transformed
+
+            #JV: The velocity values are in m/s
+            self.s.V = np.array(self.s.V) * 155.42 #JV: We get this number from sqrt(self.V0/self.m) in SI Units
+            self.s.Vacu = np.array(self.s.Vacu) * 155.42
+
+            #JV: The temperature values are in Kelvin
+            self.s.T = np.array(self.s.T) * 116.03 #JV: We get this value from self.V0/kB (Boltzmann-constant)
+
+            if(self.our_submenu == "Subsystems"):
+                self.s.T1 = np.array(self.s.T1) * 116.03
+                self.s.T2 = np.array(self.s.T2) * 116.03
+
+            if(self.simulation_type != "Brownian"):
+                #JV: The entropy in aJ/K (10^-18 J/K)
+                self.s.entropy = np.array(self.s.entropy) * 16.022/116.03
+            else:
+                #JV: The distance^2 value now is in Angstrom^2 (10^-10 m)^2
+                self.s.X2 = np.array(self.s.X2) * (self.R)**2
+
         self.simulation = True #JV: This bool is True if we have a simulation calculated/loaded
         self.simulation_type = self.our_submenu #JV: This variable stores the type of simulation that we have calculated
         self.setplotlimits(simulation = self.simulation) #JV: We call the function that will update the limits of our (matplotlib) plots
+
 
     def pause(self):
         if(self.running==True):
@@ -794,8 +836,7 @@ class SimulationScreen(Screen):
         self.obj2.clear()
         self.plotbox.canvas.clear()
         self.progressbar.value = 0 #JV: We set the progress bar to 0
-#        self.setplotlimits(simulation = self.simulation) #JV: We don't know if we have calculated/loaded a simulation yet
-
+        self.setplotlimits(simulation = self.simulation) #JV: We don't know if we have calculated/loaded a simulation yet
         #JV: Restart the counters
         self.acucounter = 0
         self.prev_i_en = 0
@@ -818,7 +859,9 @@ class SimulationScreen(Screen):
     def save(self,path,name):
         #I put all the relevant data in a numpy array and save it with pickle
         #The order is important for the loading process.
-        savedata = np.array([self.s,self.T,self.dt,self.L,self.previewlist,self.our_menu,self.our_submenu,self.n1,self.n2,self.nsmall,self.wallpos,self.holesize,self.Rbig,self.temp1,self.temp2,self.compact])
+        info_img = "icons/gray_demo.png" #JV: This image is just a gray plain color. If you want to show an info image, change this to the path of this image (e.g. "saves/Subsys_1.png")
+        # info_img = "saves_img/Subsys_1.png"
+        savedata = np.array([self.s,self.T,self.dt,self.L,self.previewlist,self.our_menu,self.our_submenu,self.n1,self.n2,self.nsmall,self.wallpos,self.holesize,self.Rbig,self.temp1,self.temp2,self.compact,self.si_units,info_img])
         with open(os.path.join(path,name+'.dat'),'wb') as file:
             pickle.dump(savedata,file)
         self.dismiss_popup()
@@ -829,21 +872,62 @@ class SimulationScreen(Screen):
         self._popup.open()
 
     def advanced_settings(self):
-        content = settingswindow(change_settings = self.change_settings, cancel = self.dismiss_popup)
-        self._popup = Popup(title='Advanced Settings', content = content, size_hint = (0.6,1))
+        content = settingswindow(change_settings = self.change_settings, change_units = self.change_units, cancel = self.dismiss_advanced_settings_popup)
+        self._popup = Popup(title='Advanced Settings', content = content, size_hint = (0.6,1), auto_dismiss=False)
 
         #JV: We display the actual values of these parameters
+        if(self.si_units):
+            self._popup.content.si_button.state = "down"
+            self._popup.content.reduced_button.state = "normal"
+
+            #JV: We now display the dt settings in the correct SI Units
+            self._popup.content.dt_slider.min = float(np.round(self.dt_slider_min * 2.19, 3)) #JV: Go to change_units() to understand the "2.19" factor
+            self._popup.content.dt_slider.max = float(np.round(self.dt_slider_max * 2.19, 3))
+            self._popup.content.dt_slider.step = float(np.round(self.dt_slider_step * 2.19, 3))
+            self._popup.content.dt_units_label.text = "(·10^-12 s)"
+
+            #JV: We display the correct temperature units
+            self._popup.content.temp1_slider.min = float(np.round(self.temp_slider_min * 116.03, 0)) #JV: Go to change_units() to understand the "116.03" factor
+            self._popup.content.temp1_slider.max = float(np.round(self.temp_slider_max * 116.03, 0))
+            self._popup.content.temp1_slider.step = float(np.round(self.temp_slider_step * 116.03, 0))
+
+            self._popup.content.temp2_slider.min = float(np.round(self.temp_slider_min * 116.03, 0))
+            self._popup.content.temp2_slider.max = float(np.round(self.temp_slider_max * 116.03, 0))
+            self._popup.content.temp2_slider.step = float(np.round(self.temp_slider_step * 116.03, 0))
+
+            self._popup.content.units_temp1.text = " K"
+            self._popup.content.units_temp2.text = " K"
+        else:
+            self._popup.content.si_button.release = "normal"
+            self._popup.content.reduced_button.state = "down"
+
+            self._popup.content.dt_slider.min = self.dt_slider_min
+            self._popup.content.dt_slider.max = self.dt_slider_max
+            self._popup.content.dt_slider.step = self.dt_slider_step
+
+            self._popup.content.temp1_slider.min = self.temp_slider_min
+            self._popup.content.temp1_slider.max = self.temp_slider_max
+            self._popup.content.temp1_slider.step = self.temp_slider_step
+
+            self._popup.content.temp2_slider.min = self.temp_slider_min
+            self._popup.content.temp2_slider.max = self.temp_slider_max
+            self._popup.content.temp2_slider.step = self.temp_slider_step
+
+            self._popup.content.dt_units_label.text = ""
+            self._popup.content.units_temp1.text = ""
+            self._popup.content.units_temp2.text = ""
+
         self._popup.content.rbig_slider.value = int(self.Rbig/self.R)
-        self._popup.content.boxlength_slider.value = self.L
-        self._popup.content.dt_slider.value = self.dt
-        self._popup.content.temp1_slider.value = self.temp1
-        self._popup.content.temp2_slider.value = self.temp2
+        self._popup.content.boxlength_slider.value = int(self.L)
+        self._popup.content.dt_slider.value = float(self.dt)
+        self._popup.content.temp1_slider.value = int(self.temp1)
+        self._popup.content.temp2_slider.value = int(self.temp2)
         self._popup.content.compact_slider.value = self.compact
         self._popup.open()
 
     def change_settings(self):
         #JV: We change the parameters if there is some change
-        if(self._popup.content.rbig_slider.value != self.Rbig or self._popup.content.boxlength_slider.value != self.L or self._popup.content.dt_slider.value != self.dt or self._popup.content.temp1_slider.value != self.temp1 or self._popup.content.temp2_slider.value != self.temp2 or self._popup.content.compact_slider.value != self.compact):
+        if(self._popup.content.rbig_slider.value != int(self.Rbig/self.R) or self._popup.content.boxlength_slider.value != self.L or self._popup.content.dt_slider.value != self.dt or self._popup.content.temp1_slider.value != self.temp1 or self._popup.content.temp2_slider.value != self.temp2 or self._popup.content.compact_slider.value != self.compact):
             self.Rbig = self._popup.content.rbig_slider.value * self.R
             self.L = self._popup.content.boxlength_slider.value
             self.dt = self._popup.content.dt_slider.value
@@ -851,8 +935,104 @@ class SimulationScreen(Screen):
             self.temp2 = self._popup.content.temp2_slider.value
             self.compact = self._popup.content.compact_slider.value
             self.add_particle_list(False)
+        if(self._popup.content.si_button.state == "down" and self.si_units == False):
+            self.si_units = True
+            self.change_units()
+        elif(self._popup.content.reduced_button.state == "down" and self.si_units == True):
+            self.si_units = False
+            self.change_units()
         else:
             pass
+
+
+    def change_units(self):
+        """JV: This function updates the units of the simulation. Remember that in reduced units, we use self.V0 (the attractive well of the particle)
+         as the unit of energy, self.R (the distance of hard sphere of the particle) as the unit of length and self.m (the mass of the particle) as the
+         unit of mass. To get the SI Units we only need to do operations with this mentioned values."""
+        if(self.si_units): #JV: We want the simulation in SI Units, so we update the corresponding values
+            if(self.simulation): #JV: If we have loaded a simulation, then we update its values aswell
+                 #JV: Now this energy values are in aJ (atto-Joules, 10^-18 J)
+                self.s.K = np.array(self.s.K) * self.V0 * 16.022 #JV: This value is to convert from eV to aJ
+                self.s.U = np.array(self.s.U) * self.V0 * 16.022
+
+                #JV: The time values are in ps (pico-seconds, 10^-12 s)
+                self.T = int(self.T * 2.19) #JV: We get this number doing self.R*sqrt(self.m/self.V0) in SI Units
+                self.timeslider.min = int(self.timeslider.min * 2.19)
+                self.timeslider.max = int(self.timeslider.max * 2.19)
+                self.timeslider.value = self.T
+                self.dt = np.round(self.dt * 2.19, 4)
+
+                #JV: The velocity values are in m/s
+                self.s.V = np.array(self.s.V) * 155.42 #JV: We get this number from sqrt(self.V0/self.m) in SI Units
+                self.s.Vacu = np.array(self.s.Vacu) * 155.42
+
+                #JV: The temperature values are in Kelvin
+                self.s.T = np.array(self.s.T) * 116.03 #JV: We get this value from self.V0/kB (Boltzmann-constant)
+                self.temp1 = np.round(self.temp1*116.03, 0)
+                self.temp2 = np.round(self.temp2*116.03, 0)
+
+                if(self.simulation_type == "Subsystems"):
+                    self.s.T1 = np.array(self.s.T1) * 116.03
+                    self.s.T2 = np.array(self.s.T2) * 116.03
+
+                if(self.simulation_type != "Brownian"):
+                    #JV: The entropy in aJ/K (10^-18 J/K)
+                    self.s.entropy = np.array(self.s.entropy) * 16.022/116.03
+                else:
+                    #JV: The distance^2 value now is in Angstrom^2 (10^-10 m)^2
+                    self.s.X2 = np.array(self.s.X2) * (self.R)**2
+            else:
+                #JV: Time values in ps (pico-seconds, 10^-12 s)
+                self.T = int(self.T * 2.19)
+                self.timeslider.min = int(self.timeslider.min * 2.19)
+                self.timeslider.max = int(self.timeslider.max * 2.19)
+                self.timeslider.value = self.T
+                self.dt = float(np.round(self.dt * 2.19, 4))
+                self.temp1 = np.round(self.temp1*116.03, 0)
+                self.temp2 = np.round(self.temp2*116.03, 0)
+
+            self.stop()
+        else: #JV: To go from SI Units to reduced Units, we only have to divide by the factors in the previous condition
+            if(self.simulation):
+                 #JV: Now this energy values are in the potencial-attractive well of the particle
+                self.s.K = np.array(self.s.K) / (self.V0 * 16.022) #JV: This value is to convert from eV to aJ
+                self.s.U = np.array(self.s.U) / (self.V0 * 16.022)
+
+                #JV: Time values
+                self.T = int(5 * np.round(self.T /(2.19 * 5))) #JV: We get this number doing self.R*sqrt(self.m/self.V0) in SI Units. We multiply and divide by 5 so we get a number multiple of 5, this helps when we will have to compute
+                self.timeslider.min = int(5 * np.round(self.timeslider.min /(2.19 * 5)))
+                self.timeslider.max = int(5 * np.round(self.timeslider.max /(2.19 * 5)))
+                self.timeslider.value = self.T
+                self.dt = float(5 * np.round(self.dt /(2.19 * 5), 4))
+
+                #JV: Velocity values
+                self.s.V = np.array(self.s.V) / 155.42 #JV: We get this number from sqrt(self.V0/self.m) in SI Units
+                self.s.Vacu = np.array(self.s.Vacu) / 155.42
+
+                #JV: Temperature values
+                self.s.T = np.array(self.s.T) / 116.03 #JV: We get this value from self.V0/kB (Boltzmann-constant)
+                self.temp1 = int(np.round((self.temp1 / 116.03),0))
+                self.temp2 = int(np.round((self.temp2 / 116.03),0))
+
+                if(self.simulation_type == "Subsystems"):
+                    self.s.T1 = np.array(self.s.T1) / 116.03
+                    self.s.T2 = np.array(self.s.T2) / 116.03
+
+                if(self.simulation_type != "Brownian"):
+                    #JV: The entropy in aJ/K (10^-18 J/K)
+                    self.s.entropy = np.array(self.s.entropy) * 116.03/16.022
+                else:
+                    #JV: The distance^2 value
+                    self.s.X2 = np.array(self.s.X2) / (self.R)**2
+            else:
+                self.T = int(5 * np.round(self.T /(2.19 * 5))) #JV: We get this number doing self.R*sqrt(self.m/self.V0) in SI Units
+                self.timeslider.min = int(5 * np.round(self.timeslider.min /(2.19 * 5)))
+                self.timeslider.max = int(5 * np.round(self.timeslider.max /(2.19 * 5)))
+                self.timeslider.value = self.T
+                self.dt = float(5 * np.round(self.dt /(2.19 * 5), 4))
+                self.temp1 = int(np.round((self.temp1 / 116.03),0))
+                self.temp2 = int(np.round((self.temp2 / 116.03),0))
+            self.stop()
 
     def load(self,path,name,demo=False):
         self.stop()
@@ -875,6 +1055,7 @@ class SimulationScreen(Screen):
         self.temp1 = savedata[13]
         self.temp2 = savedata[14]
         self.compact = savedata[15]
+        self.si_units = savedata[16]
 
         self.timeslider.value = self.T
         self.n = int(np.sqrt(self.s.particles.size))
@@ -968,6 +1149,7 @@ class SimulationScreen(Screen):
         self.simulation_type = self.our_submenu #JV: This variable stores the type of simulation that we have calculated
         self.setplotlimits(simulation = self.simulation) #JV: Reset and adapt the matplotlib plots
 
+
     def loadpopup(self):
         content = loadwindow(load = self.load, cancel = self.dismiss_popup)
         self._popup = Popup(title='Load File', content = content, size_hint=(1,1))
@@ -975,6 +1157,19 @@ class SimulationScreen(Screen):
 
 
     def dismiss_popup(self):
+        #JV: Closes the Pop-Up
+        self._popup.dismiss()
+
+    def dismiss_advanced_settings_popup(self, button_pressed):
+        #JV: Closes the Pop-Up in the advanced-settings window
+        if(button_pressed == "si"):
+            self._popup.content.si_button.state = "down"
+            self._popup.content.reduced_button.state = "normal"
+        if(button_pressed == "red"):
+            self._popup.content.si_button.release = "normal"
+            self._popup.content.reduced_button.state = "down"
+
+        self.change_settings()
         self._popup.dismiss()
 
 
@@ -986,8 +1181,11 @@ class SimulationScreen(Screen):
 
         #JV: We have this condition so you are only able to compute this time inversion if you haven't done it before (in this simulation)
         # Doing this we make sure the user doesn't enter in a loop of time inversions that are not what we want ( :) )
-        if(self.inversion == False):
-            self.T = self.time
+        if(self.inversion == False and self.time > 5.):
+            if(self.si_units):
+                self.T = self.time * 2.19 #JV: Go to change_units() to understand the "2.19" factor"
+            else:
+                self.T = self.time
             self.stop()
             self.timeslider.value = self.T
 
@@ -998,8 +1196,12 @@ class SimulationScreen(Screen):
         """JV: This function is the responsible of updating the plots"""
         i = int(self.time/self.dt)
         pause = 0.001
+        n_bins = 15 #JV: The number of bins that we will be plotting in the histogram
 
-        delta = 5./self.dt
+        if(self.si_units):
+            delta = 5*2.19/self.dt
+        else:
+            delta = 5./self.dt
 
         if(self.our_submenu == 'Random Lattice'):
             if(self.plotmenu.current_tab.text == 'Energy'): #JV: instantaneous energy graphic
@@ -1016,33 +1218,71 @@ class SimulationScreen(Screen):
 #                vs = np.linspace(0,self.s.V.max()+0.5,100) #JV: The +0.5 is because we want to see the whole last possible bar
                 if(self.counter % self.update_momentum == 0):
                     self.histax.cla()
-                    self.histax.set_xlabel('v')
-                    self.histax.set_ylabel('Number of particles relative')
+                    self.histax.set_xlim([0,self.s.V.max()+0.5])
+                    y_lim = 0.5*len(self.s.V[i,:])
+                    self.histax.set_ylim([0,y_lim])
+                    # self.histax.set_ylim([0,np.ceil(self.s.MB.max())])
+                    if(self.si_units):
+                        self.histax.set_xlabel('v (m/s)')
+                        self.histax.set_ylabel('Number of particles')
+                        bin_width = (self.s.V.max()+50)/n_bins
+                        hist,bins = np.histogram(self.s.V[i,:], bins=np.arange(0,self.s.V.max()+50,bin_width))
+                        center = (bins[:-1] + bins[1:]) / 2
+                        self.histax.bar(center, hist, align='center', width=bin_width*0.8)
+                        # self.histax.hist(self.s.V[i,:],bins=np.arange(0,self.s.V.max()+10, 100),density=True,color=[0.0,0.0,1.0], histtype = self.histtype)
+                    else:
+                        self.histax.set_xlabel('v')
+                        self.histax.set_ylabel('Number of particles')
+                        # self.histax.hist(self.s.V[i,:],bins=np.arange(0,self.s.V.max()+1, 0.334),rwidth=0.75,density=True,color=[0.0,0.0,1.0], histtype = self.histtype)
+                        bin_width = (self.s.V.max()+1)/n_bins
+                        hist,bins = np.histogram(self.s.V[i,:], bins=np.arange(0,self.s.V.max()+1,bin_width))
+                        center = (bins[:-1] + bins[1:]) / 2
+                        self.histax.bar(center, hist, align='center', width=bin_width*0.8)
 #                    self.hist.subplots_adjust(0.125,0.19,0.9,0.9)
 #                    self.histax.yaxis.labelpad = 10
 #                    self.histax.xaxis.labelpad = -0.5
-                    self.histax.set_xlim([0,self.s.V.max()+0.5])
-                    self.histax.set_ylim([0,np.ceil(self.s.MB.max())])
-                    self.histax.hist(self.s.V[i,:],bins=np.arange(0,self.s.V.max()+1, 0.334),rwidth=0.75,density=True,color=[0.0,0.0,1.0], histtype = self.histtype)
-                    self.histax.text(self.vsplot[np.argmax(self.s.MB[i,:])-int(len(self.vsplot)*0.2)],self.s.MB[i,:].max(),"T = "+str(np.round(self.s.T[i],decimals=3)), fontsize=15, color = "red", alpha = 0.85)
+                    self.s.MB[i,:] = self.s.MB[i,:] * y_lim #JV: The MB curve goes from 0 to 1, so we need to adapt it to our plot.
+                    if(self.si_units):
+                        self.histax.text(self.vsplot[np.argmax(self.s.MB[i,:])-int(len(self.vsplot)*0.2)],self.s.MB[i,:].max()*1.1,"T = "+str(np.round(self.s.T[i],decimals=3))+" K", fontsize=15, color = "red", alpha = 0.85)
+                    else:
+                        self.histax.text(self.vsplot[np.argmax(self.s.MB[i,:])-int(len(self.vsplot)*0.2)],self.s.MB[i,:].max()*1.1,"T = "+str(np.round(self.s.T[i],decimals=3)), fontsize=15, color = "red", alpha = 0.85)
                     self.histax.plot(self.vsplot,self.s.MB[i,:],'r-')
                     self.histcanvas.draw()
                     plt.pause(pause)
 
             elif(self.plotmenu.current_tab.text == 'Acu'): #Accumulated momentum histogram
 #                self.acuhistax.clear() #JV: We clean the graphic although we don't draw anything yet (to clean anything left in a previous simulation)
-                if(self.time > 30.):
+                if(self.si_units):
+                    wait_time = 30. * 2.19 #JV: Go to change_units() to understand the "2.19" factor"
+                else:
+                    wait_time = 30.
+                if(self.time > wait_time):
 #                    vs = np.linspace(0,self.s.V.max()+0.5,100)
                     self.acuhistax.cla()
-                    self.acuhistax.set_xlabel('v')
-                    self.acuhistax.set_ylabel('Number of particles relative')
-#                    self.acuhist.subplots_adjust(0.125,0.19,0.9,0.9)
-#                    self.acuhistax.yaxis.labelpad = 10
-#                    self.acuhistax.xaxis.labelpad = -0.5
                     self.acuhistax.set_xlim([0,self.s.V.max()+0.5])
-                    self.acuhistax.set_ylim([0,np.ceil(self.s.MB.max())])
-                    self.acuhistax.hist(self.s.Vacu[int((i-int((40./self.dt)))/delta)],bins=np.arange(0, self.s.V.max() + 0.2, 0.3),density=True)
-                    self.acuhistax.plot(self.vsplot,self.s.MBacu[int((i-int((40./self.dt)))/delta)],'r-')
+                    y_lim = 1
+                    self.acuhistax.set_ylim([0,y_lim])
+                    if(self.si_units):
+                        self.acuhistax.set_xlabel('v (m/s)')
+                        self.acuhistax.set_ylabel('Number of particles relative')
+                        bin_width = (self.s.V.max())/n_bins
+                        hist,bins = np.histogram(self.s.Vacu[int((i-int((wait_time/(self.dt))))/delta)], bins=np.arange(0,self.s.V.max(),bin_width),density=True)
+                        y_lim = 2.4*hist.max()
+                        self.acuhistax.set_ylim([0,y_lim])
+                        center = (bins[:-1] + bins[1:]) / 2
+                        self.acuhistax.bar(center, hist, align='center', width=bin_width*0.8)
+                        # self.acuhistax.hist(self.s.Vacu[int((i-int((wait_time/(2.19*self.dt))))/delta)],bins=np.arange(0, self.s.V.max() + 10, 70),density=True, histtype = self.histtype)
+                    else:
+                        self.acuhistax.set_xlabel('v')
+                        self.acuhistax.set_ylabel('Number of particles relative')
+                        bin_width = (self.s.V.max())/n_bins
+                        hist,bins = np.histogram(self.s.Vacu[int((i-int((wait_time/(self.dt))))/delta)], bins=np.arange(0,self.s.V.max(),bin_width),density=True)
+                        y_lim = 2.4*hist.max()
+                        self.acuhistax.set_ylim([0,y_lim])
+                        center = (bins[:-1] + bins[1:]) / 2
+                        self.acuhistax.bar(center, hist, align='center', width=bin_width*0.8)
+                        # self.acuhistax.hist(self.s.Vacu[int((i-int((wait_time/self.dt)))/delta)],bins=np.arange(0, self.s.V.max() + 0.2, 0.35),density=True, histtype = self.histtype)
+                    # self.acuhistax.plot(self.vsplot,self.s.MBacu[int((i-int((wait_time/self.dt)))/delta)]*y_lim,'r-')
                     self.acuhistcanvas.draw()
                     plt.pause(pause)
 
@@ -1070,17 +1310,45 @@ class SimulationScreen(Screen):
                 if(self.counter % self.update_momentum == 0):
                     self.histax.cla()
                     self.histax.set_xlim([0,self.s.V.max()+0.5])
-                    self.histax.set_ylim([0,np.ceil(self.s.MB.max())])
-                    self.histax.set_xlabel('v')
-                    self.histax.set_ylabel('Number of particles relative')
+                    y_lim = 0.3*len(self.s.V[i,:])
+                    self.histax.set_ylim([0,y_lim])
+                    if(self.si_units):
+                        self.histax.set_xlabel('v (m/s)')
+                        self.histax.set_ylabel('Number of particles')
+                        bin_width = (self.s.V.max()+50)/int(n_bins*0.7)
+                        hist1,bins1 = np.histogram(self.s.V[i,0:self.n1**2], bins=np.arange(0,self.s.V.max()+50,bin_width))
+                        hist2,bins2 = np.histogram(self.s.V[i,self.n1**2:self.n1**2+self.n2**2], bins=np.arange(0,self.s.V.max()+50,bin_width))
+                        center1 = (bins1[:-1] + bins1[1:]) / 2
+                        center2 = (bins2[:-1] + bins2[1:]) / 2
+                        self.histax.bar(center1, hist1, align='center', width=bin_width*0.8, color=[0.32,0.86,0.86])
+                        self.histax.bar(center2, hist2, align='center', width=bin_width*0.8, color=[0.43,0.96,0.16])
+                    else:
+                        self.histax.set_xlabel('v')
+                        self.histax.set_ylabel('Number of particles')
+                        bin_width = (self.s.V.max()+1)/int(n_bins*0.7)
+                        hist1,bins1 = np.histogram(self.s.V[i,0:self.n1**2], bins=np.arange(0,self.s.V.max()+1,bin_width))
+                        hist2,bins2 = np.histogram(self.s.V[i,self.n1**2:self.n1**2+self.n2**2], bins=np.arange(0,self.s.V.max()+50,bin_width))
+                        center1 = (bins1[:-1] + bins1[1:]) / 2
+                        center2 = (bins2[:-1] + bins2[1:]) / 2
+                        self.histax.bar(center1, hist1, align='center', width=bin_width*0.8, color=[0.32,0.86,0.86])
+                        self.histax.bar(center2, hist2, align='center', width=bin_width*0.8, color=[0.43,0.96,0.16])
 #                    self.hist.subplots_adjust(0.125,0.19,0.9,0.9)
 #                    self.histax.yaxis.labelpad = 10
 #                    self.histax.xaxis.labelpad = -0.5
-                    self.histax.hist([self.s.V[i,0:self.n1**2], self.s.V[i,self.n1**2:self.n1**2+self.n2**2]], bins=np.arange(0, self.s.V.max() + 1, 0.67), rwidth=0.8, density=True, color=[[0.32,0.86,0.86],[0.43,0.96,0.16]], histtype = self.histtype)
+                    # self.histax.hist([self.s.V[i,0:self.n1**2], self.s.V[i,self.n1**2:self.n1**2+self.n2**2]], bins=np.arange(0, self.s.V.max() + 1, 0.67), rwidth=0.8, density=True, color=[[0.32,0.86,0.86],[0.43,0.96,0.16]], histtype = self.histtype)
+                    self.s.MB[i,:] = self.s.MB[i,:] * y_lim #JV: The MB curves go from 0 to 1, so we need to adapt them to our plot.
+                    self.s.MB1[i,:] = self.s.MB1[i,:] * y_lim #JV: The MB curve goes from 0 to 1, so we need to adapt it to our plot.
+                    self.s.MB2[i,:] = self.s.MB2[i,:] * y_lim #JV: The MB curve goes from 0 to 1, so we need to adapt it to our plot.
+
                     #JV: We now plot the texts that show the temperature of each types of particles
-                    self.histax.text(self.s.V.max()-2.5,0.8,"T1 = "+str(np.round(self.s.T1[i],decimals=3)), fontsize = 12, color = "blue", alpha = 0.75)
-                    self.histax.text(self.s.V.max()-1,0.8,"T2 = "+str(np.round(self.s.T2[i],decimals=3)), fontsize = 12, color = "green", alpha = 0.75)
-                    self.histax.text(self.vsplot[np.argmax(self.s.MB[i,:])-int(len(self.vsplot)*0.2)],self.s.MB[i,:].max(),"T = "+str(np.round(self.s.T[i],decimals=3)), fontsize = 12, color = "red", alpha = 0.85)
+                    if(self.si_units):
+                        self.histax.text(self.vsplot[35],y_lim*0.8,"T1 = "+str(np.round(self.s.T1[i],decimals=3))+" K", fontsize = 12, color = "blue", alpha = 0.75)
+                        self.histax.text(self.vsplot[70],y_lim*0.8,"T2 = "+str(np.round(self.s.T2[i],decimals=3))+" K", fontsize = 12, color = "green", alpha = 0.75)
+                        self.histax.text(self.vsplot[np.argmax(self.s.MB[i,:])-int(len(self.vsplot)*0.2)],self.s.MB[i,:].max(),"T = "+str(np.round(self.s.T[i],decimals=3))+" K", fontsize = 12, color = "red", alpha = 0.85)
+                    else:
+                        self.histax.text(self.vsplot[45],y_lim*0.8,"T1 = "+str(np.round(self.s.T1[i],decimals=3)), fontsize = 12, color = "blue", alpha = 0.75)
+                        self.histax.text(self.vsplot[75],y_lim*0.8,"T2 = "+str(np.round(self.s.T2[i],decimals=3)), fontsize = 12, color = "green", alpha = 0.75)
+                        self.histax.text(self.vsplot[np.argmax(self.s.MB[i,:])-int(len(self.vsplot)*0.2)],self.s.MB[i,:].max(),"T = "+str(np.round(self.s.T[i],decimals=3)), fontsize = 12, color = "red", alpha = 0.85)
                     self.histax.plot(self.vsplot,self.s.MB1[i,:],'b-', alpha = 0.5)
                     self.histax.plot(self.vsplot,self.s.MB2[i,:],'g-', alpha = 0.5)
                     self.histax.plot(self.vsplot,self.s.MB[i,:],'r-')
@@ -1088,19 +1356,37 @@ class SimulationScreen(Screen):
                     plt.pause(pause)
 
             elif(self.plotmenu.current_tab.text == 'Acu'): #Accumulated momentum histogram
-                self.acuhistax.clear()
-                if(self.time > 30.):
+                if(self.si_units):
+                    wait_time = 30. * 2.19 #JV: Go to change_units() to understand the "2.19" factor"
+                else:
+                    wait_time = 30.
+                if(self.time > wait_time):
 #                    vs = np.linspace(0,self.s.V.max()+0.5,100)
                     self.acuhistax.cla()
-                    self.acuhistax.set_xlabel('v')
-                    self.acuhistax.set_ylabel('Number of particles relative')
-#                    self.acuhist.subplots_adjust(0.125,0.19,0.9,0.9)
-#                    self.acuhistax.yaxis.labelpad = 10
-#                    self.acuhistax.xaxis.labelpad = -0.5
                     self.acuhistax.set_xlim([0,self.s.V.max()+0.5])
-                    self.acuhistax.set_ylim([0,np.ceil(self.s.MB.max())])
-                    self.acuhistax.hist(self.s.Vacu[int((i-int((40./self.dt)))/delta)],bins=np.arange(0, self.s.V.max() + 0.2, 0.3),density=True)
-                    self.acuhistax.plot(self.vsplot,self.s.MBacu[int((i-int((40./self.dt)))/delta)],'r-')
+                    y_lim = 1
+                    self.acuhistax.set_ylim([0,y_lim])
+                    if(self.si_units):
+                        self.acuhistax.set_xlabel('v (m/s)')
+                        self.acuhistax.set_ylabel('Number of particles relative')
+                        bin_width = (self.s.V.max())/n_bins
+                        hist,bins = np.histogram(self.s.Vacu[int((i-int((wait_time/(self.dt))))/delta)], bins=np.arange(0,self.s.V.max(),bin_width),density=True)
+                        y_lim = 2.4*hist.max()
+                        self.acuhistax.set_ylim([0,y_lim])
+                        center = (bins[:-1] + bins[1:]) / 2
+                        self.acuhistax.bar(center, hist, align='center', width=bin_width*0.8)
+                        # self.acuhistax.hist(self.s.Vacu[int((i-int((wait_time/(2.19*self.dt))))/delta)],bins=np.arange(0, self.s.V.max() + 10, 70),density=True, histtype = self.histtype)
+                    else:
+                        self.acuhistax.set_xlabel('v')
+                        self.acuhistax.set_ylabel('Number of particles relative')
+                        bin_width = (self.s.V.max())/n_bins
+                        hist,bins = np.histogram(self.s.Vacu[int((i-int((wait_time/(self.dt))))/delta)], bins=np.arange(0,self.s.V.max(),bin_width),density=True)
+                        y_lim = 2.4*hist.max()
+                        self.acuhistax.set_ylim([0,y_lim])
+                        center = (bins[:-1] + bins[1:]) / 2
+                        self.acuhistax.bar(center, hist, align='center', width=bin_width*0.8)
+                        # self.acuhistax.hist(self.s.Vacu[int((i-int((wait_time/self.dt)))/delta)],bins=np.arange(0, self.s.V.max() + 0.2, 0.35),density=True, histtype = self.histtype)
+                    # self.acuhistax.plot(self.vsplot,self.s.MBacu[int((i-int((wait_time/self.dt)))/delta)]*y_lim,'r-')
                     self.acuhistcanvas.draw()
                     plt.pause(pause)
 
@@ -1126,32 +1412,78 @@ class SimulationScreen(Screen):
                 if(self.counter % self.update_momentum == 0):
                     self.histax.cla()
                     self.histax.set_xlim([0,self.s.V.max()+0.5])
-                    self.histax.set_ylim([0,np.ceil(self.s.MB.max())])
-                    self.histax.set_xlabel('v')
-                    self.histax.set_ylabel('Number of particles relative')
+                    y_lim = 0.6*len(self.s.V[i,:])
+                    self.histax.set_ylim([0,y_lim])
+                    # self.histax.set_ylim([0,np.ceil(self.s.MB.max())])
+                    if(self.si_units):
+                        self.histax.set_xlabel('v (m/s)')
+                        self.histax.set_ylabel('Number of particles')
+                        bin_width = (self.s.V.max()+50)/n_bins
+                        hist1,bins1 = np.histogram(self.s.V[i,0:self.nsmall**2], bins=np.arange(0,self.s.V.max()+50,bin_width))
+                        hist2,bins2 = np.histogram(self.s.V[i,self.nsmall**2:self.nsmall**2+self.nbig**2], bins=1)
+                        center1 = (bins1[:-1] + bins1[1:]) / 2
+                        center2 = (bins2[:-1] + bins2[1:]) / 2
+                        self.histax.bar(center2, y_lim*hist2, align='center', width=bin_width*0.8, color=[0.43,0.96,0.16],alpha=0.8)
+                        self.histax.bar(center1, hist1, align='center', width=bin_width*0.8, color=[0.32,0.86,0.86])
+                        # self.histax.hist(self.s.V[i,:],bins=np.arange(0,self.s.V.max()+10, 100),density=True,color=[0.0,0.0,1.0], histtype = self.histtype)
+                    else:
+                        self.histax.set_xlabel('v')
+                        self.histax.set_ylabel('Number of particles')
+                        # self.histax.hist(self.s.V[i,:],bins=np.arange(0,self.s.V.max()+1, 0.334),rwidth=0.75,density=True,color=[0.0,0.0,1.0], histtype = self.histtype)
+                        bin_width = (self.s.V.max()+1)/n_bins
+                        hist1,bins1 = np.histogram(self.s.V[i,0:self.nsmall**2], bins=np.arange(0,self.s.V.max()+1,bin_width))
+                        hist2,bins2 = np.histogram(self.s.V[i,self.nsmall**2:self.nsmall**2+self.nbig**2])
+                        center1 = (bins1[:-1] + bins1[1:]) / 2
+                        center2 = (bins2[:-1] + bins2[1:]) / 2
+                        self.histax.bar(center2, y_lim*hist2, align='center', width=bin_width*0.8, color=[0.43,0.96,0.16],alpha=0.8)
+                        self.histax.bar(center1, hist1, align='center', width=bin_width*0.8, color=[0.32,0.86,0.86])
 #                    self.hist.subplots_adjust(0.125,0.19,0.9,0.9)
 #                    self.histax.yaxis.labelpad = 10
 #                    self.histax.xaxis.labelpad = -0.5
-                    self.histax.hist([self.s.V[i,0:self.nsmall**2],self.s.V[i,self.nsmall**2:self.nsmall**2+self.nbig**2]],bins=np.arange(0, self.s.V.max() + 1, 0.334),rwidth=0.75,density=True,color=[[0.32,0.86,0.86],[0.43,0.96,0.16]], histtype = self.histtype)
-                    self.histax.text(self.vsplot[np.argmax(self.s.MB[i,:])-int(len(self.vsplot)*0.2)],self.s.MB[i,:].max(),"T = "+str(np.round(self.s.T[i],decimals=3)), fontsize=15, color = "red", alpha = 0.85)
+                    self.s.MB[i,:] = self.s.MB[i,:] * y_lim #JV: The MB curve goes from 0 to 1, so we need to adapt it to our plot.
+                    if(self.si_units):
+                        self.histax.text(self.vsplot[np.argmax(self.s.MB[i,:])-int(len(self.vsplot)*0.2)],self.s.MB[i,:].max()*1.1,"T = "+str(np.round(self.s.T[i],decimals=3))+" K", fontsize=15, color = "red", alpha = 0.85)
+                    else:
+                        self.histax.text(self.vsplot[np.argmax(self.s.MB[i,:])-int(len(self.vsplot)*0.2)],self.s.MB[i,:].max()*1.1,"T = "+str(np.round(self.s.T[i],decimals=3)), fontsize=15, color = "red", alpha = 0.85)
                     self.histax.plot(self.vsplot,self.s.MB[i,:],'r-')
                     self.histcanvas.draw()
                     plt.pause(pause)
 
+                    # self.histax.hist([self.s.V[i,0:self.nsmall**2],self.s.V[i,self.nsmall**2:self.nsmall**2+self.nbig**2]],bins=np.arange(0, self.s.V.max() + 1, 0.334),rwidth=0.75,density=True,color=[[0.32,0.86,0.86],[0.43,0.96,0.16]], histtype = self.histtype)
+                    # self.histax.text(self.vsplot[np.argmax(self.s.MB[i,:])-int(len(self.vsplot)*0.2)],self.s.MB[i,:].max(),"T = "+str(np.round(self.s.T[i],decimals=3)), fontsize=15, color = "red", alpha = 0.85)
+
             elif(self.plotmenu.current_tab.text == 'Acu'): #Accumulated momentum histogram
-                self.acuhistax.clear()
-                if(self.time > 30.):
+                if(self.si_units):
+                    wait_time = 30. * 2.19 #JV: Go to change_units() to understand the "2.19" factor"
+                else:
+                    wait_time = 30.
+                if(self.time > wait_time):
 #                    vs = np.linspace(0,self.s.V.max()+0.5,100)
                     self.acuhistax.cla()
-                    self.acuhistax.set_xlabel('v')
-                    self.acuhistax.set_ylabel('Number of particles relative')
-#                    self.acuhist.subplots_adjust(0.125,0.19,0.9,0.9)
-#                    self.acuhistax.yaxis.labelpad = 10
-#                    self.acuhistax.xaxis.labelpad = -0.5
                     self.acuhistax.set_xlim([0,self.s.V.max()+0.5])
-                    self.acuhistax.set_ylim([0,np.ceil(self.s.MB.max())])
-                    self.acuhistax.hist(self.s.Vacu[int((i-int((40./self.dt)))/delta)],bins=np.arange(0, self.s.V.max() + 0.2, 0.3),density=True)
-                    self.acuhistax.plot(self.vsplot,self.s.MBacu[int((i-int((40./self.dt)))/delta)],'r-')
+                    y_lim = 1
+                    self.acuhistax.set_ylim([0,y_lim])
+                    if(self.si_units):
+                        self.acuhistax.set_xlabel('v (m/s)')
+                        self.acuhistax.set_ylabel('Number of particles relative')
+                        bin_width = (self.s.V.max())/n_bins
+                        hist,bins = np.histogram(self.s.Vacu[int((i-int((wait_time/(self.dt))))/delta)], bins=np.arange(0,self.s.V.max(),bin_width),density=True)
+                        y_lim = 2.4*hist.max()
+                        self.acuhistax.set_ylim([0,y_lim])
+                        center = (bins[:-1] + bins[1:]) / 2
+                        self.acuhistax.bar(center, hist, align='center', width=bin_width*0.8)
+                        # self.acuhistax.hist(self.s.Vacu[int((i-int((wait_time/(2.19*self.dt))))/delta)],bins=np.arange(0, self.s.V.max() + 10, 70),density=True, histtype = self.histtype)
+                    else:
+                        self.acuhistax.set_xlabel('v')
+                        self.acuhistax.set_ylabel('Number of particles relative')
+                        bin_width = (self.s.V.max())/n_bins
+                        hist,bins = np.histogram(self.s.Vacu[int((i-int((wait_time/(self.dt))))/delta)], bins=np.arange(0,self.s.V.max(),bin_width),density=True)
+                        y_lim = 2.4*hist.max()
+                        self.acuhistax.set_ylim([0,y_lim])
+                        center = (bins[:-1] + bins[1:]) / 2
+                        self.acuhistax.bar(center, hist, align='center', width=bin_width*0.8)
+                        # self.acuhistax.hist(self.s.Vacu[int((i-int((wait_time/self.dt)))/delta)],bins=np.arange(0, self.s.V.max() + 0.2, 0.35),density=True, histtype = self.histtype)
+                    # self.acuhistax.plot(self.vsplot,self.s.MBacu[int((i-int((wait_time/self.dt)))/delta)]*y_lim,'r-')
                     self.acuhistcanvas.draw()
                     plt.pause(pause)
 
@@ -1168,42 +1500,65 @@ class SimulationScreen(Screen):
         """JV: This function updates the limits of the matplotlib plots. If there is a simulation loaded, it will adapt the plots limits to it."""
 
         #JV: Energy plot
-        self.enplotax.clear()
-        self.enplotax.set_xlabel('t')
-        self.enplotax.set_ylabel('Energy')
+        self.enplotax.cla()
+        if(self.si_units): #JV: If true, then we will add the units on the labels
+            self.enplotax.set_xlabel('t (·$10^{-12}$ s)')
+            self.enplotax.set_ylabel('Energy (·$10^{-18}$ J)')
+        else:
+            self.enplotax.set_xlabel('t')
+            self.enplotax.set_ylabel('Energy')
         self.enplot.subplots_adjust(0.125,0.19,0.9,0.9)
         self.enplotax.yaxis.labelpad = 10
         self.enplotax.xaxis.labelpad = -0.5
 
         #JV: Momentum plot
-        self.histax.clear()
-        self.histax.set_xlabel('v')
-        self.histax.set_ylabel('Number of particles relative')
+        self.histax.cla()
+        if(self.si_units):
+            self.histax.set_xlabel('v (m/s)')
+            self.histax.set_ylabel('Number of particles')
+        else:
+            self.histax.set_xlabel('v')
+            self.histax.set_ylabel('Number of particles')
         self.hist.subplots_adjust(0.125,0.19,0.9,0.9)
         self.histax.yaxis.labelpad = 10
         self.histax.xaxis.labelpad = -0.5
 
         #JV: Accumulated momentum
-        self.acuhistax.clear()
-        self.acuhistax.set_xlabel('v')
-        self.acuhistax.set_ylabel('Number of particles relative')
+        self.acuhistax.cla()
+        if(self.si_units):
+            self.acuhistax.set_xlabel('v (m/s)')
+            self.acuhistax.set_ylabel('Number of particles relative')
+        else:
+            self.acuhistax.set_xlabel('v')
+            self.acuhistax.set_ylabel('Number of particles relative')
         self.acuhist.subplots_adjust(0.125,0.19,0.9,0.9)
         self.acuhistax.yaxis.labelpad = 10
         self.acuhistax.xaxis.labelpad = -0.5
 
         #JV: Entropy/
+        self.extraplotax.cla()
         if(self.our_submenu == 'Brownian'):
-            self.extraplotax.clear()
-            self.extraplotax.set_xlabel('t')
-            self.extraplotax.set_ylabel(r'$\langle|x(t)-x(0)|^{2}\rangle$')
+            if(self.si_units):
+                self.extraplotax.set_xlabel('t (·$10^{-12}$ s)')
+                self.extraplotax.set_ylabel(r'$\langle|x(t)-x(0)|^{2}\rangle$ (·$10^{-20}$ $m^2$)')
+            else:
+                self.extraplotax.set_xlabel('t')
+                self.extraplotax.set_ylabel(r'$\langle|x(t)-x(0)|^{2}\rangle$')
         else:
-            self.extraplotax.clear()
-            self.extraplotax.set_xlabel('t')
-            self.extraplotax.set_ylabel('Entropy')
+            if(self.si_units):
+                self.extraplotax.set_xlabel('t (·$10^{-12}$ s)')
+                self.extraplotax.set_ylabel('Entropy (·$10^{-18}$ J/K)')
+            else:
+                self.extraplotax.set_xlabel('t')
+                self.extraplotax.set_ylabel('Entropy')
+
+        self.extraplot.subplots_adjust(0.125,0.19,0.9,0.9)
+        self.extraplotax.yaxis.labelpad = 10
+        self.extraplotax.xaxis.labelpad = -0.5
 
         if(simulation):
             n = int(self.T/self.dt)
-            self.tplot = np.arange(self.dt,self.T+10+self.dt,self.dt)
+            self.tplot = np.arange(self.dt,self.T+20+self.dt,self.dt)
             self.vsplot = np.linspace(0,self.s.V.max()+0.5,100)
 
             #JV: Energy plot
@@ -1217,7 +1572,7 @@ class SimulationScreen(Screen):
 
             #JV: Momentum plot
             self.histax.set_xlim([0,self.s.V.max()+0.5])
-            self.histax.set_ylim([0,np.ceil(self.s.MB.max())])
+            self.histax.set_ylim([0,0.6*len(self.s.V[0,:])])
 
             #JV: Accumulated momentum
             self.acuhistax.set_xlim([0,self.s.V.max()+0.5])
@@ -1244,12 +1599,12 @@ class SimulationScreen(Screen):
             self.enplotax.set_ylim([0,25])
 
             #JV: Momentum plot
-            self.histax.set_xlim([0,1])
-            self.histax.set_ylim([0,25])
+            self.histax.set_xlim([0,6])
+            self.histax.set_ylim([0,4])
 
             #JV: Accumulated momentum
-            self.acuhistax.set_xlim([0,1])
-            self.acuhistax.set_ylim([0,25])
+            self.acuhistax.set_xlim([0,6])
+            self.acuhistax.set_ylim([0,1])
 
             #JV: Entropy/
             self.extraplotax.set_xlim([0,self.T])
@@ -1387,9 +1742,13 @@ class SimulationScreen(Screen):
                     Color(1.0,0.0,0.0)
                     Ellipse(pos=((self.s.X[i,j])*scale*self.R+w/2.-self.R*scale/2.,(self.s.Y[i,j])*scale*self.R+h/2.-self.R*scale/2.),size=(self.R*scale,self.R*scale))
 
-            self.time += interval*self.speed #Here is where speed accelerates animation
-            self.progressbar.value = (self.time/self.T)*100 #Updates the progress bar.
+            #Here is where speed accelerates animation
+            if(self.si_units):
+                self.time += interval*self.speed*2.19 #JV: Go to change_units() to understand the "2.19" factor"
+            else:
+                self.time += interval*self.speed
 
+            self.progressbar.value = (self.time/self.T)*100 #Updates the progress bar.
             self.acucounter += 1
 
         elif(self.our_submenu == 'Subsystems'):
@@ -1402,9 +1761,13 @@ class SimulationScreen(Screen):
                         Color(0.43,0.96,0.16)
                         Ellipse(pos=((self.s.X[i,j])*scale*self.R+w/2.-self.R*scale/2.,(self.s.Y[i,j])*scale*self.R+h/2.-self.R*scale/2.),size=(self.R*scale,self.R*scale))
 
-            self.time += interval*self.speed #Here is where speed accelerates animation
-            self.progressbar.value = (self.time/self.T)*100 #Updates the progress bar.
+            #Here is where speed accelerates animation
+            if(self.si_units):
+                self.time += interval*self.speed*2.19 #JV: Go to change_units() to understand the "2.19" factor"
+            else:
+                self.time += interval*self.speed
 
+            self.progressbar.value = (self.time/self.T)*100 #Updates the progress bar.
             self.acucounter += 1
 
         elif(self.our_submenu == 'Brownian'):
@@ -1426,9 +1789,13 @@ class SimulationScreen(Screen):
 #                            self.obj2.add(Ellipse(pos=((self.s.X[i,j])*scale*self.R+w/2.,(self.s.Y[i,j])*scale*self.R+h/2.),size=(self.Rbig*scale/15,self.Rbig*scale/15)))
 
 
-            self.time += interval*self.speed #Here is where speed accelerates animation
-            self.progressbar.value = (self.time/self.T)*100 #Updates the progress bar.
+            #Here is where speed accelerates animation
+            if(self.si_units):
+                self.time += interval*self.speed*2.19 #JV: Go to change_units() to understand the "2.19" factor"
+            else:
+                self.time += interval*self.speed
 
+            self.progressbar.value = (self.time/self.T)*100 #Updates the progress bar.
             self.acucounter += 1
 
         if(self.our_menu == "Walls"):
@@ -2056,6 +2423,882 @@ class GameScreen(Screen):
                 return i
         return None
 
+
+class DemoScreen(Screen):
+    charge = 1.
+    particles = np.array([])
+
+    plot_texture = ObjectProperty()
+
+    #Definition for the matplotlib figures of the histograms
+
+    #JV: Moment histogram
+    hist = Figure()
+    histax = hist.add_subplot(111, xlabel='v', ylabel = 'Number of particles relative')
+    histax.set_xlim([0,1])
+    histax.set_ylim([0,25])
+    hist.subplots_adjust(0.125,0.19,0.9,0.9) #JV: We ajust the subplot to see whole axis and their labels
+    histax.yaxis.labelpad = 10 #JV: We ajust the labels to our interest
+    histax.xaxis.labelpad = -0.5
+    histcanvas = FigureCanvasKivyAgg(hist)
+
+    #JV: Acomulated moment histogram
+    acuhist = Figure()
+    acuhistax = acuhist.add_subplot(111, xlabel='v', ylabel = 'Number of particles relative')
+    acuhistax.set_xlim([0,1])
+    acuhistax.set_ylim([0,25])
+    acuhist.subplots_adjust(0.125,0.19,0.9,0.9)
+    acuhistax.yaxis.labelpad = 10
+    acuhistax.xaxis.labelpad = -0.5
+    acuhistcanvas = FigureCanvasKivyAgg(acuhist)
+
+    #JV: Energy (Sub)Plot
+    enplot = Figure()
+    enplotax = enplot.add_subplot(111, xlabel='t', ylabel = 'Energy')
+    enplotax.set_xlim([0,1])
+    enplotax.set_ylim([0,25])
+    enplot.subplots_adjust(0.125,0.19,0.9,0.9)
+    enplotax.yaxis.labelpad = 10
+    enplotax.xaxis.labelpad = -0.5
+    enplotcanvas = FigureCanvasKivyAgg(enplot)
+
+    #JV: Xpos plot
+    extraplot = Figure()
+    extraplotax = extraplot.add_subplot(111, xlabel='t', ylabel= "Entropy")
+    extraplotax.set_xlim([0,60]) #JV: This initial value should change if we change the total time of computation
+    extraplotax.set_ylim([0,25])
+    extraplot.subplots_adjust(0.125,0.19,0.9,0.9)
+    extraplotax.yaxis.labelpad = 10
+    extraplotax.xaxis.labelpad = -0.5
+    extraplotcanvas = FigureCanvasKivyAgg(extraplot)
+
+    #These are for a different method of accumulation (see comments animation function)
+    Vacu = np.array([])
+    MBacu = np.zeros(100)
+    acucounter = 0
+
+    #JV: To change the background color from the simulation canvas, check also the kivy file for more
+    Window.clearcolor = (0, 0, 0, 1)
+
+    def transition_DM(self):
+        """JV: Screen transition: from 'demo' to 'menu'"""
+        self.stop()
+        self.manager.transition = FadeTransition()
+        self.manager.current = 'menu'
+
+
+    def __init__(self, **kwargs):
+        super(DemoScreen, self).__init__(**kwargs)
+
+    def d_pseudo_init(self):
+        """
+        JV: Here we initialize some functions and some initial values. Some of this values can be changed inside the simulation
+         on the "Advanced Settings" menu. (Go to advanced_settings() for more info)
+        """
+        self.n_demo = 0 #JV: 0 is the first demo that is loaded, this variable saves the demo that we are in
+        self.total_demos = len(os.listdir(os.path.join(os.path.dirname(os.path.abspath(__file__)),"saves"))) #JV: This stores the number of demos that we have loaded
+
+        if(self.total_demos == 0):
+            print("You don't have any demo loaded! You need to have at least one to go to the Demo page.")
+            self.transition_DM()
+
+        self.simulationlabel.text = "Demo " + str(self.n_demo + 1) #JV: We count starting from 1 because humans prefer it this way
+        self.simulationname.text = os.path.splitext(os.listdir(os.path.join(os.path.dirname(os.path.abspath(__file__)),"saves"))[self.n_demo])[0] #JV: We show the title of the simulation (without the extension)
+        self.time = 0.
+        self.T = 0
+        self.dt = 0.01 #JV: Because the time of computation is a number that ends with 0 or 5 (we can change this in the kivy file), we
+        # need a dt that is multiple of 5 (0,01;0,015;...), if we don't do this we get some strange errors (...)
+
+        #Initialization of the speed button
+        self.speedindex = 3
+        self.change_speed()
+
+        #JV: Initial values of the temperatures of the particles (temp1) and the second type of particles for the subsystems menu
+        self.temp1 = 3
+        self.temp2 = 2
+
+        self.compact = 1 #JV: If this variable is increased, the particles will be close to each other, instead of ocupying the whole space they will get into a "corner"
+
+        #JV: This number is the steps it takes in the animation, to draws the plots. If it's 1, it will update each step of time, etc.
+        self.update_plots = 5
+        #JV: The momentum plot can be slower than the other plots, so we it is possible to only update it every certain steps inside the plotting() function. If 1 it will update like the other plots.
+        self.update_momentum = 3
+        self.histtype = "stepfilled" #JV: The type of histogram. {'bar', 'barstacked', 'step', 'stepfilled'}. "bar" seems to be the most appealing visually, while "step" runs much faster
+        self.counter = 0 #JV: The counter of this "plotting" steps
+        #JV: This counters store the last plotting point, so we can print the ones that are missing (one for the energy plot and the other for the entropy)
+        self.prev_i_en = 0
+        self.prev_i_ex = 0
+        self.simulation = False #JV: This bool will be true when we will have loaded a simulation
+
+        self.si_units = False #JV:If false, we start the simulation in reduced units; if true, in SI Units
+
+        #Set flags to False
+        self.running = False #Checks if animation is running
+        self.paused = False #Checks if animation is paused
+        self.previewtimer = Clock.schedule_interval(self.preview,0.04)#Always, runs, shows previews. Calls the preview() function every 0.04 seconds
+        self.previewlist = []
+        self.progress = 0.
+        self.our_submenu = 'Random Lattice' #JV: We start at the "Random Lattice" submenu
+        self.our_menu = 'In a box' #JV: We start at "In a box" menu. This two variables will store in which submenu/menu we are
+        self.n = 1 #JV: Modify this value if at the start you want to show more than one particle in the simulation (as a default value)
+        self.n1 = 1 #JV: Modify this value if at the start you want to show more than one particle in the subsystem 1 in the subsystems submenu (as a default value)
+        self.n2 = 1 #JV: Same for the second subsystem
+        self.nbig = 1 #JV: Number of initial big particles in the "Brownian" submenu
+        self.nsmall = 4 #JV: Number of inicial small particles in the "Brownian" submenu
+
+        self.Rbig = 4*3.405 #JV: We define the initial value of the radius for the big particle in the "Brownian" submenu
+
+        self.wallpos = 0 #JV: We define the initial value of the position of the wall in the "Walls" menu
+        self.holesize = 20 #JV: We define the initial value of the size of the hole (we need to change the kivy file if we change this value, go to the parameters of this slider and change the "value")
+        self.wallwidth = 1 #JV: We define the initial value of the width of the wall
+
+        #Initialization of the plots
+        self.histbox.add_widget(self.histcanvas)
+        self.acuhistbox.add_widget(self.acuhistcanvas)
+        self.enplotbox.add_widget(self.enplotcanvas)
+        self.extraplotbox.add_widget(self.extraplotcanvas)
+
+        self.mass = 1 #JV: change this if you want to change the initial mass
+
+        #Here you can modify the units of the simulation as well as the size of the box.
+        self.V0 = 0.01 #eV
+        self.R = 3.405 #A
+        self.L = 200. #A
+        self.M = 0.04 #kg/mol
+
+        #JV: This group will contain the two lines that form the wall in the "Walls" menu
+        self.obj = InstructionGroup()
+        self.point1 = []
+        self.point2 = []
+
+        self.obj2 = InstructionGroup() #JV: This group will contain the trace of the big particle in the "Brownian" submenu
+
+        #JV: We create a list that contains our submenus, it will help us when we have to modify them. Update this if you add more submenus.
+        self.submenu_list_str = ["Random Lattice","Subsystems","Brownian"] #JV: And a list with the names of each submenu
+
+        #JV: We do the same for the menus. Update this if you add more menus.
+        self.menu_list_str = ["In a box","Free!","Walls"] #JV: And a list with the names of each menu
+
+        #JV: We make this so the simulation starts with one particle instead of 0, that could lead to some errors
+        self.load_demo()
+
+    def prev_simulation(self):
+        """JV: This function is called by the left arrow on the kivy file, so here we update the variable that counts
+         the simulation we are in and the call the function self.load_demo(), that will update this changes."""
+        if(self.n_demo != 0):
+            self.n_demo -= 1
+        else:
+            self.n_demo = self.total_demos - 1
+
+        #JV: Update the changes
+        self.simulationlabel.text = "Demo " + str(self.n_demo + 1)
+        self.simulationname.text = os.path.splitext(os.listdir(os.path.join(os.path.dirname(os.path.abspath(__file__)),"saves"))[self.n_demo])[0]
+        self.load_demo()
+
+
+    def next_simulation(self):
+        """JV: Like prev_simulation() but we go to the next demo instead of the previous."""
+        if(self.n_demo != (self.total_demos - 1)):
+            self.n_demo += 1
+        else:
+            self.n_demo = 0
+
+        #JV: Update the changes
+        self.simulationlabel.text = "Demo " + str(self.n_demo + 1)
+        self.simulationname.text = os.path.splitext(os.listdir(os.path.join(os.path.dirname(os.path.abspath(__file__)),"saves"))[self.n_demo])[0]
+        self.load_demo()
+
+
+    def update_pos(self,touch):
+        """This function updates the position parameters when you click the screen"""
+        w = self.plotbox.size[0]
+        h = self.plotbox.size[1]
+        b = min(w,h)
+        scale = b/self.L
+        x = (touch.pos[0] - b/2.)/scale
+        y = (touch.pos[1] - b/2.)/scale
+
+
+    def play(self):
+        if(self.running==False):
+            time.sleep(0.5)
+            self.timer = Clock.schedule_interval(self.animate,0.04)
+            self.timer2 = Clock.schedule_interval(self.plotting, 0.04*self.update_plots)
+            self.running = True
+            self.paused = False
+        elif(self.running==True):
+            pass
+
+
+    def pause(self):
+        if(self.running==True):
+            self.paused = True
+            self.timer.cancel()
+            self.timer2.cancel()
+            self.running = False
+        else:
+            pass
+
+    def stop(self):
+        self.pause()
+        self.paused = False
+        self.time = 0
+        self.obj2.clear()
+        self.plotbox.canvas.clear()
+        self.progressbar.value = 0 #JV: We set the progress bar to 0
+        self.setplotlimits(simulation = self.simulation) #JV: We don't know if we have loaded a simulation yet
+        #JV: Restart the counters
+        self.acucounter = 0
+        self.prev_i_en = 0
+        self.prev_i_ex = 0
+
+
+    def change_speed(self):
+        #This simply cicles the sl list with the speed multipliers, self.speed is later
+        #used to speed up the animation
+        sl = [1,2,5,10]
+        if(self.speedindex == len(sl)-1):
+            self.speedindex = 0
+        else:
+            self.speedindex += 1
+        self.speed = sl[self.speedindex]
+        self.speedbutton.text = str(self.speed)+'x'
+
+
+    def load_demo(self):
+        """JV: This function loads the simulation that we want."""
+        self.stop()
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)),"saves")
+        demos = os.listdir(path)
+
+        with open(os.path.join(path,demos[self.n_demo]),'rb') as file:
+            savedata = pickle.load(file)
+
+        name = demos[self.n_demo]
+
+        self.s = savedata[0]
+        self.T = savedata[1]
+        self.dt = savedata[2]
+        self.L = savedata[3]
+        self.previewlist = savedata[4]
+        self.our_menu = savedata[5] #JV: To know in which menu corresponds the simulation
+        self.our_submenu = savedata[6]
+        self.n1 = savedata[7]
+        self.n2 = savedata[8]
+        self.nsmall = savedata[9]
+        self.wallpos = savedata[10]
+        self.holesize = savedata[11]
+        self.Rbig = savedata[12]
+        self.temp1 = savedata[13]
+        self.temp2 = savedata[14]
+        self.compact = savedata[15]
+        self.si_units = savedata[16]
+        if(len(savedata) > 17):
+            self.demo_info_img = savedata[17] #JV: This variable stores the name (and relative path) to the info image. The simulations created by the user will only have a gray image.
+        else:
+            self.demo_info_img = "icons/gray_demo.png"
+
+        self.infolabel.source = self.demo_info_img
+
+#        self.timeslider.value = self.T
+        self.n = int(np.sqrt(self.s.particles.size))
+        print("")
+        print("")
+        print('Loaded simulation {} with computation'.format(name))
+
+        last = len(self.s.U)-1 #JV: This variable stores the index of the last variable in this arrays, so we can access it easier
+        print("Initial energy: ",self.s.K[0]+self.s.U[0],"Final energy: ",self.s.U[last]+self.s.K[last])
+        print("Relative increment of energy: ", (abs((self.s.K[0]+self.s.U[0])-(self.s.U[last]+self.s.K[last]))/(self.s.K[0]+self.s.U[0]))*100,"%")
+
+        self.simulation = True #JV: This bool is True if we have a simulation calculated/loaded
+        self.setplotlimits(simulation = self.simulation) #JV: Reset and adapt the matplotlib plots
+
+
+    def loadpopup(self):
+        content = loadwindow(load = self.load, cancel = self.dismiss_popup)
+        self._popup = Popup(title='Load File', content = content, size_hint=(1,1))
+        self._popup.open()
+
+
+    def dismiss_popup(self):
+        self._popup.dismiss()
+
+
+    def plotting(self,interval):
+        """JV: This function is the responsible of updating the plots"""
+        i = int(self.time/self.dt)
+        pause = 0.001
+        n_bins = 15 #JV: The number of bins that we will be plotting in the histogram
+
+        if(self.si_units):
+            delta = 5*2.19/self.dt
+        else:
+            delta = 5./self.dt
+
+        if(self.our_submenu == 'Random Lattice'):
+            if(self.plotmenu.current_tab.text == 'Energy'): #JV: instantaneous energy graphic
+                self.enplotax.plot(self.tplot[self.prev_i_en:i],self.s.K[self.prev_i_en:i],'r-',label = 'Kinetic Energy', linewidth = 2.2)
+                self.enplotax.plot(self.tplot[self.prev_i_en:i],self.s.U[self.prev_i_en:i],'b-',label = 'Potential Energy')
+                self.enplotax.plot(self.tplot[self.prev_i_en:i],self.s.K[self.prev_i_en:i]+self.s.U[self.prev_i_en:i],'g-',label = 'Total Energy')
+                self.enplotcanvas.draw()
+                self.prev_i_en = i
+                plt.pause(pause)
+
+            elif(self.plotmenu.current_tab.text == 'Momentum'): #Instantaneous momentum histogram
+                if(self.counter % self.update_momentum == 0):
+                    self.histax.cla()
+                    self.histax.set_xlim([0,self.s.V.max()+0.5])
+                    y_lim = 0.5*len(self.s.V[i,:])
+                    self.histax.set_ylim([0,y_lim])
+
+                    if(self.si_units):
+                        self.histax.set_xlabel('v (m/s)')
+                        self.histax.set_ylabel('Number of particles')
+                        bin_width = (self.s.V.max()+50)/n_bins
+                        hist,bins = np.histogram(self.s.V[i,:], bins=np.arange(0,self.s.V.max()+50,bin_width))
+                        center = (bins[:-1] + bins[1:]) / 2
+                        self.histax.bar(center, hist, align='center', width=bin_width*0.8)
+                    else:
+                        self.histax.set_xlabel('v')
+                        self.histax.set_ylabel('Number of particles')
+                        bin_width = (self.s.V.max()+1)/n_bins
+                        hist,bins = np.histogram(self.s.V[i,:], bins=np.arange(0,self.s.V.max()+1,bin_width))
+                        center = (bins[:-1] + bins[1:]) / 2
+                        self.histax.bar(center, hist, align='center', width=bin_width*0.8)
+
+                    self.s.MB[i,:] = self.s.MB[i,:] * y_lim #JV: The MB curve goes from 0 to 1, so we need to adapt it to our plot.
+                    if(self.si_units):
+                        self.histax.text(self.vsplot[np.argmax(self.s.MB[i,:])-int(len(self.vsplot)*0.2)],self.s.MB[i,:].max()*1.1,"T = "+str(np.round(self.s.T[i],decimals=3))+" K", fontsize=15, color = "red", alpha = 0.85)
+                    else:
+                        self.histax.text(self.vsplot[np.argmax(self.s.MB[i,:])-int(len(self.vsplot)*0.2)],self.s.MB[i,:].max()*1.1,"T = "+str(np.round(self.s.T[i],decimals=3)), fontsize=15, color = "red", alpha = 0.85)
+                    self.histax.plot(self.vsplot,self.s.MB[i,:],'r-')
+                    self.histcanvas.draw()
+                    plt.pause(pause)
+
+            elif(self.plotmenu.current_tab.text == 'Acu'): #Accumulated momentum histogram
+                if(self.si_units):
+                    wait_time = 30. * 2.19 #JV: Go to change_units() to understand the "2.19" factor"
+                else:
+                    wait_time = 30.
+                if(self.time > wait_time):
+                    self.acuhistax.cla()
+                    self.acuhistax.set_xlim([0,self.s.V.max()+0.5])
+                    y_lim = 1
+                    self.acuhistax.set_ylim([0,y_lim])
+
+                    if(self.si_units):
+                        self.acuhistax.set_xlabel('v (m/s)')
+                        self.acuhistax.set_ylabel('Number of particles relative')
+                        bin_width = (self.s.V.max())/n_bins
+                        hist,bins = np.histogram(self.s.Vacu[int((i-int((wait_time/(self.dt))))/delta)], bins=np.arange(0,self.s.V.max(),bin_width),density=True)
+                        y_lim = 2.4*hist.max()
+                        self.acuhistax.set_ylim([0,y_lim])
+                        center = (bins[:-1] + bins[1:]) / 2
+                        self.acuhistax.bar(center, hist, align='center', width=bin_width*0.8)
+                    else:
+                        self.acuhistax.set_xlabel('v')
+                        self.acuhistax.set_ylabel('Number of particles relative')
+                        bin_width = (self.s.V.max())/n_bins
+                        hist,bins = np.histogram(self.s.Vacu[int((i-int((wait_time/(self.dt))))/delta)], bins=np.arange(0,self.s.V.max(),bin_width),density=True)
+                        y_lim = 2.4*hist.max()
+                        self.acuhistax.set_ylim([0,y_lim])
+                        center = (bins[:-1] + bins[1:]) / 2
+                        self.acuhistax.bar(center, hist, align='center', width=bin_width*0.8)
+
+                    self.acuhistcanvas.draw()
+                    plt.pause(pause)
+
+            elif(self.plotmenu.current_tab.text == 'Entropy'):
+                self.extraplotax.plot(self.tplot[self.prev_i_ex:i],self.s.entropy[self.prev_i_ex:i],'g-')
+                self.extraplotcanvas.draw()
+                self.prev_i_ex = i
+                plt.pause(pause)
+
+        elif(self.our_submenu == 'Subsystems'):
+            #JV: Here we do the graphics for this submenu, check the comments from the previous submenu for more info
+            #JV: We will draw the two subsystems in two diferent colors
+            if(self.plotmenu.current_tab.text == 'Energy'):
+                self.enplotax.plot(self.tplot[self.prev_i_en:i],self.s.K[self.prev_i_en:i],'r-',label = 'Kinetic Energy', linewidth = 2.2)
+                self.enplotax.plot(self.tplot[self.prev_i_en:i],self.s.U[self.prev_i_en:i],'b-',label = 'Potential Energy')
+                self.enplotax.plot(self.tplot[self.prev_i_en:i],self.s.K[self.prev_i_en:i]+self.s.U[self.prev_i_en:i],'g-',label = 'Total Energy')
+                self.enplotcanvas.draw()
+                self.prev_i_en = i
+                plt.pause(pause)
+
+            elif(self.plotmenu.current_tab.text == 'Momentum'): #Instantaneous momentum histogram
+                if(self.counter % self.update_momentum == 0):
+                    self.histax.cla()
+                    self.histax.set_xlim([0,self.s.V.max()+0.5])
+                    y_lim = 0.3*len(self.s.V[i,:])
+                    self.histax.set_ylim([0,y_lim])
+
+                    if(self.si_units):
+                        self.histax.set_xlabel('v (m/s)')
+                        self.histax.set_ylabel('Number of particles')
+                        bin_width = (self.s.V.max()+50)/int(n_bins*0.7)
+                        hist1,bins1 = np.histogram(self.s.V[i,0:self.n1**2], bins=np.arange(0,self.s.V.max()+50,bin_width))
+                        hist2,bins2 = np.histogram(self.s.V[i,self.n1**2:self.n1**2+self.n2**2], bins=np.arange(0,self.s.V.max()+50,bin_width))
+                        center1 = (bins1[:-1] + bins1[1:]) / 2
+                        center2 = (bins2[:-1] + bins2[1:]) / 2
+                        self.histax.bar(center1, hist1, align='center', width=bin_width*0.8, color=[0.32,0.86,0.86])
+                        self.histax.bar(center2, hist2, align='center', width=bin_width*0.8, color=[0.43,0.96,0.16])
+                    else:
+                        self.histax.set_xlabel('v')
+                        self.histax.set_ylabel('Number of particles')
+                        bin_width = (self.s.V.max()+1)/int(n_bins*0.7)
+                        hist1,bins1 = np.histogram(self.s.V[i,0:self.n1**2], bins=np.arange(0,self.s.V.max()+1,bin_width))
+                        hist2,bins2 = np.histogram(self.s.V[i,self.n1**2:self.n1**2+self.n2**2], bins=np.arange(0,self.s.V.max()+50,bin_width))
+                        center1 = (bins1[:-1] + bins1[1:]) / 2
+                        center2 = (bins2[:-1] + bins2[1:]) / 2
+                        self.histax.bar(center1, hist1, align='center', width=bin_width*0.8, color=[0.32,0.86,0.86])
+                        self.histax.bar(center2, hist2, align='center', width=bin_width*0.8, color=[0.43,0.96,0.16])
+
+                    self.s.MB[i,:] = self.s.MB[i,:] * y_lim #JV: The MB curves go from 0 to 1, so we need to adapt them to our plot.
+                    self.s.MB1[i,:] = self.s.MB1[i,:] * y_lim #JV: The MB curve goes from 0 to 1, so we need to adapt it to our plot.
+                    self.s.MB2[i,:] = self.s.MB2[i,:] * y_lim #JV: The MB curve goes from 0 to 1, so we need to adapt it to our plot.
+
+                    #JV: We now plot the texts that show the temperature of each types of particles
+                    if(self.si_units):
+                        self.histax.text(self.vsplot[35],y_lim*0.8,"T1 = "+str(np.round(self.s.T1[i],decimals=3))+" K", fontsize = 12, color = "blue", alpha = 0.75)
+                        self.histax.text(self.vsplot[70],y_lim*0.8,"T2 = "+str(np.round(self.s.T2[i],decimals=3))+" K", fontsize = 12, color = "green", alpha = 0.75)
+                        self.histax.text(self.vsplot[np.argmax(self.s.MB[i,:])-int(len(self.vsplot)*0.2)],self.s.MB[i,:].max(),"T = "+str(np.round(self.s.T[i],decimals=3))+" K", fontsize = 12, color = "red", alpha = 0.85)
+                    else:
+                        self.histax.text(self.vsplot[45],y_lim*0.8,"T1 = "+str(np.round(self.s.T1[i],decimals=3)), fontsize = 12, color = "blue", alpha = 0.75)
+                        self.histax.text(self.vsplot[75],y_lim*0.8,"T2 = "+str(np.round(self.s.T2[i],decimals=3)), fontsize = 12, color = "green", alpha = 0.75)
+                        self.histax.text(self.vsplot[np.argmax(self.s.MB[i,:])-int(len(self.vsplot)*0.2)],self.s.MB[i,:].max(),"T = "+str(np.round(self.s.T[i],decimals=3)), fontsize = 12, color = "red", alpha = 0.85)
+                    self.histax.plot(self.vsplot,self.s.MB1[i,:],'b-', alpha = 0.5)
+                    self.histax.plot(self.vsplot,self.s.MB2[i,:],'g-', alpha = 0.5)
+                    self.histax.plot(self.vsplot,self.s.MB[i,:],'r-')
+                    self.histcanvas.draw()
+                    plt.pause(pause)
+
+            elif(self.plotmenu.current_tab.text == 'Acu'): #Accumulated momentum histogram
+                if(self.si_units):
+                    wait_time = 30. * 2.19 #JV: Go to change_units() to understand the "2.19" factor"
+                else:
+                    wait_time = 30.
+                if(self.time > wait_time):
+                    self.acuhistax.cla()
+                    self.acuhistax.set_xlim([0,self.s.V.max()+0.5])
+                    y_lim = 1
+                    self.acuhistax.set_ylim([0,y_lim])
+                    if(self.si_units):
+                        self.acuhistax.set_xlabel('v (m/s)')
+                        self.acuhistax.set_ylabel('Number of particles relative')
+                        bin_width = (self.s.V.max())/n_bins
+                        hist,bins = np.histogram(self.s.Vacu[int((i-int((wait_time/(self.dt))))/delta)], bins=np.arange(0,self.s.V.max(),bin_width),density=True)
+                        y_lim = 2.4*hist.max()
+                        self.acuhistax.set_ylim([0,y_lim])
+                        center = (bins[:-1] + bins[1:]) / 2
+                        self.acuhistax.bar(center, hist, align='center', width=bin_width*0.8)
+                    else:
+                        self.acuhistax.set_xlabel('v')
+                        self.acuhistax.set_ylabel('Number of particles relative')
+                        bin_width = (self.s.V.max())/n_bins
+                        hist,bins = np.histogram(self.s.Vacu[int((i-int((wait_time/(self.dt))))/delta)], bins=np.arange(0,self.s.V.max(),bin_width),density=True)
+                        y_lim = 2.4*hist.max()
+                        self.acuhistax.set_ylim([0,y_lim])
+                        center = (bins[:-1] + bins[1:]) / 2
+                        self.acuhistax.bar(center, hist, align='center', width=bin_width*0.8)
+
+                    self.acuhistcanvas.draw()
+                    plt.pause(pause)
+
+            elif(self.plotmenu.current_tab.text == 'Entropy'):
+                self.extraplotax.plot(self.tplot[self.prev_i_ex:i],self.s.entropy[self.prev_i_ex:i],'g-')
+                self.extraplotcanvas.draw()
+                self.prev_i_ex = i
+                plt.pause(pause)
+
+        elif(self.our_submenu == 'Brownian'):
+            if(self.plotmenu.current_tab.text == 'Energy'):
+                self.enplotax.plot(self.tplot[self.prev_i_en:i],self.s.K[self.prev_i_en:i],'r-',label = 'Kinetic Energy', linewidth = 2.2)
+                self.enplotax.plot(self.tplot[self.prev_i_en:i],self.s.U[self.prev_i_en:i],'b-',label = 'Potential Energy')
+                self.enplotax.plot(self.tplot[self.prev_i_en:i],self.s.K[self.prev_i_en:i]+self.s.U[self.prev_i_en:i],'g-',label = 'Total Energy')
+                self.enplotcanvas.draw()
+                self.prev_i_en = i
+                plt.pause(pause)
+
+            elif(self.plotmenu.current_tab.text == 'Momentum'): #Instantaneous momentum histogram
+                if(self.counter % self.update_momentum == 0):
+                    self.histax.cla()
+                    self.histax.set_xlim([0,self.s.V.max()+0.5])
+                    y_lim = 0.6*len(self.s.V[i,:])
+                    self.histax.set_ylim([0,y_lim])
+
+                    if(self.si_units):
+                        self.histax.set_xlabel('v (m/s)')
+                        self.histax.set_ylabel('Number of particles')
+                        bin_width = (self.s.V.max()+50)/n_bins
+                        hist1,bins1 = np.histogram(self.s.V[i,0:self.nsmall**2], bins=np.arange(0,self.s.V.max()+50,bin_width))
+                        hist2,bins2 = np.histogram(self.s.V[i,self.nsmall**2:self.nsmall**2+self.nbig**2], bins=1)
+                        center1 = (bins1[:-1] + bins1[1:]) / 2
+                        center2 = (bins2[:-1] + bins2[1:]) / 2
+                        self.histax.bar(center2, y_lim*hist2, align='center', width=bin_width*0.8, color=[0.43,0.96,0.16],alpha=0.8)
+                        self.histax.bar(center1, hist1, align='center', width=bin_width*0.8, color=[0.32,0.86,0.86])
+                    else:
+                        self.histax.set_xlabel('v')
+                        self.histax.set_ylabel('Number of particles')
+                        bin_width = (self.s.V.max()+1)/n_bins
+                        hist1,bins1 = np.histogram(self.s.V[i,0:self.nsmall**2], bins=np.arange(0,self.s.V.max()+1,bin_width))
+                        hist2,bins2 = np.histogram(self.s.V[i,self.nsmall**2:self.nsmall**2+self.nbig**2])
+                        center1 = (bins1[:-1] + bins1[1:]) / 2
+                        center2 = (bins2[:-1] + bins2[1:]) / 2
+                        self.histax.bar(center2, y_lim*hist2, align='center', width=bin_width*0.8, color=[0.43,0.96,0.16],alpha=0.8)
+                        self.histax.bar(center1, hist1, align='center', width=bin_width*0.8, color=[0.32,0.86,0.86])
+
+                    self.s.MB[i,:] = self.s.MB[i,:] * y_lim #JV: The MB curve goes from 0 to 1, so we need to adapt it to our plot.
+                    if(self.si_units):
+                        self.histax.text(self.vsplot[np.argmax(self.s.MB[i,:])-int(len(self.vsplot)*0.2)],self.s.MB[i,:].max()*1.1,"T = "+str(np.round(self.s.T[i],decimals=3))+" K", fontsize=15, color = "red", alpha = 0.85)
+                    else:
+                        self.histax.text(self.vsplot[np.argmax(self.s.MB[i,:])-int(len(self.vsplot)*0.2)],self.s.MB[i,:].max()*1.1,"T = "+str(np.round(self.s.T[i],decimals=3)), fontsize=15, color = "red", alpha = 0.85)
+                    self.histax.plot(self.vsplot,self.s.MB[i,:],'r-')
+                    self.histcanvas.draw()
+                    plt.pause(pause)
+
+            elif(self.plotmenu.current_tab.text == 'Acu'): #Accumulated momentum histogram
+                if(self.si_units):
+                    wait_time = 30. * 2.19 #JV: Go to change_units() to understand the "2.19" factor"
+                else:
+                    wait_time = 30.
+                if(self.time > wait_time):
+                    self.acuhistax.cla()
+                    self.acuhistax.set_xlim([0,self.s.V.max()+0.5])
+                    y_lim = 1
+                    self.acuhistax.set_ylim([0,y_lim])
+
+                    if(self.si_units):
+                        self.acuhistax.set_xlabel('v (m/s)')
+                        self.acuhistax.set_ylabel('Number of particles relative')
+                        bin_width = (self.s.V.max())/n_bins
+                        hist,bins = np.histogram(self.s.Vacu[int((i-int((wait_time/(self.dt))))/delta)], bins=np.arange(0,self.s.V.max(),bin_width),density=True)
+                        y_lim = 2.4*hist.max()
+                        self.acuhistax.set_ylim([0,y_lim])
+                        center = (bins[:-1] + bins[1:]) / 2
+                        self.acuhistax.bar(center, hist, align='center', width=bin_width*0.8)
+                    else:
+                        self.acuhistax.set_xlabel('v')
+                        self.acuhistax.set_ylabel('Number of particles relative')
+                        bin_width = (self.s.V.max())/n_bins
+                        hist,bins = np.histogram(self.s.Vacu[int((i-int((wait_time/(self.dt))))/delta)], bins=np.arange(0,self.s.V.max(),bin_width),density=True)
+                        y_lim = 2.4*hist.max()
+                        self.acuhistax.set_ylim([0,y_lim])
+                        center = (bins[:-1] + bins[1:]) / 2
+                        self.acuhistax.bar(center, hist, align='center', width=bin_width*0.8)
+
+                    self.acuhistcanvas.draw()
+                    plt.pause(pause)
+
+            elif(self.plotmenu.current_tab.text == '<|x(t)-x(0)|^2>'):
+                self.extraplotax.plot(self.tplot[self.prev_i_ex:i],self.s.X2[self.prev_i_ex:i],'g-')
+                self.extraplotcanvas.draw()
+                self.prev_i_ex = i
+                plt.pause(pause)
+
+        self.counter += 1
+
+    def setplotlimits(self,simulation):
+        """JV: This function updates the limits of the matplotlib plots. If there is a simulation loaded, it will adapt the plots limits to it."""
+
+        #JV: Energy plot
+        self.enplotax.cla()
+        if(self.si_units): #JV: If true, then we will add the units on the labels
+            self.enplotax.set_xlabel('t (·$10^{-12}$ s)')
+            self.enplotax.set_ylabel('Energy (·$10^{-18}$ J)')
+        else:
+            self.enplotax.set_xlabel('t')
+            self.enplotax.set_ylabel('Energy')
+        self.enplot.subplots_adjust(0.125,0.19,0.9,0.9)
+        self.enplotax.yaxis.labelpad = 10
+        self.enplotax.xaxis.labelpad = -0.5
+
+        #JV: Momentum plot
+        self.histax.cla()
+        if(self.si_units):
+            self.histax.set_xlabel('v (m/s)')
+            self.histax.set_ylabel('Number of particles')
+        else:
+            self.histax.set_xlabel('v')
+            self.histax.set_ylabel('Number of particles')
+        self.hist.subplots_adjust(0.125,0.19,0.9,0.9)
+        self.histax.yaxis.labelpad = 10
+        self.histax.xaxis.labelpad = -0.5
+
+        #JV: Accumulated momentum
+        self.acuhistax.cla()
+        if(self.si_units):
+            self.acuhistax.set_xlabel('v (m/s)')
+            self.acuhistax.set_ylabel('Number of particles relative')
+        else:
+            self.acuhistax.set_xlabel('v')
+            self.acuhistax.set_ylabel('Number of particles relative')
+        self.acuhist.subplots_adjust(0.125,0.19,0.9,0.9)
+        self.acuhistax.yaxis.labelpad = 10
+        self.acuhistax.xaxis.labelpad = -0.5
+
+        #JV: Entropy/
+        self.extraplotax.cla()
+        if(self.our_submenu == 'Brownian'):
+            if(self.si_units):
+                self.extraplotax.set_xlabel('t (·$10^{-12}$ s)')
+                self.extraplotax.set_ylabel(r'$\langle|x(t)-x(0)|^{2}\rangle$ (·$10^{-20}$ $m^2$)')
+            else:
+                self.extraplotax.set_xlabel('t')
+                self.extraplotax.set_ylabel(r'$\langle|x(t)-x(0)|^{2}\rangle$')
+        else:
+            if(self.si_units):
+                self.extraplotax.set_xlabel('t (·$10^{-12}$ s)')
+                self.extraplotax.set_ylabel('Entropy (·$10^{-18}$ J/K)')
+            else:
+                self.extraplotax.set_xlabel('t')
+                self.extraplotax.set_ylabel('Entropy')
+
+        self.extraplot.subplots_adjust(0.125,0.19,0.9,0.9)
+        self.extraplotax.yaxis.labelpad = 10
+        self.extraplotax.xaxis.labelpad = -0.5
+
+        if(simulation):
+            n = int(self.T/self.dt)
+            self.tplot = np.arange(self.dt,self.T+10+self.dt,self.dt)
+            self.vsplot = np.linspace(0,self.s.V.max()+0.5,100)
+
+            #JV: Energy plot
+            self.enplotax.set_xlim([0,self.T])
+            #JV: We make the red line a little wider so we can see it and doesn't get hidden (in some cases) by the total energy
+            self.enplotax.set_ylim([0,(self.s.K[0:n].max()+self.s.U[0:n].max())+np.uint(self.s.K[0:n].max()+self.s.U[0:n].max())/40])
+            self.enplotax.plot(0,self.s.K[0],'r-',label = 'Kinetic Energy', linewidth = 2.2)
+            self.enplotax.plot(0,self.s.U[0],'b-',label = 'Potential Energy')
+            self.enplotax.plot(0,self.s.K[0]+self.s.U[0],'g-',label = 'Total Energy')
+            self.enplotax.legend(loc=7)
+
+            #JV: Momentum plot
+            self.histax.set_xlim([0,self.s.V.max()+0.5])
+            self.histax.set_ylim([0,np.ceil(self.s.MB.max())])
+
+            #JV: Accumulated momentum
+            self.acuhistax.set_xlim([0,self.s.V.max()+0.5])
+            self.acuhistax.set_ylim([0,np.ceil(self.s.MB.max())])
+
+            #JV: Entropy/
+            if(self.our_submenu == 'Brownian'):
+                self.extraplotax.set_xlim([0,self.T])
+                self.extraplotax.set_ylim([0,self.s.X2.max()+self.s.X2.max()*0.05])
+            else:
+                self.extraplotax.set_xlim([0,self.T])
+                self.extraplotax.set_ylim([self.s.entropy.min(),self.s.entropy.max()+self.s.entropy.max()*0.05])
+
+        else:
+            #JV: Energy plot
+            self.enplotax.set_xlim([0,self.T])
+            self.enplotax.set_ylim([0,25])
+
+            #JV: Momentum plot
+            self.histax.set_xlim([0,6])
+            self.histax.set_ylim([0,4])
+
+            #JV: Accumulated momentum
+            self.acuhistax.set_xlim([0,6])
+            self.acuhistax.set_ylim([0,1])
+
+            #JV: Entropy/
+            self.extraplotax.set_xlim([0,self.T])
+            self.extraplotax.set_ylim([0,5])
+
+        #JV: Now draw this changes in the plot
+        self.enplotcanvas.draw()
+        self.histcanvas.draw()
+        self.acuhistcanvas.draw()
+        self.extraplotcanvas.draw()
+
+    def preview(self,interval):
+        """Draws the previews of the particles when the animation is not running or before adding
+        the preview of the lattice mode before adding is not programmed (mainly because it is a random process)"""
+
+        if(self.running == False and self.paused == False):
+            #JV: We can add conditions if we need it for different menus (like we do for the "walls" menu)
+            self.plotbox.canvas.clear()
+            with self.plotbox.canvas:
+                if(self.our_submenu == 'Random Lattice'):
+                    for i in range(0,len(self.previewlist),1):
+                        x0 = self.previewlist[i][0]
+                        y0 = self.previewlist[i][1]
+                        vx0 = self.previewlist[i][2]
+                        vy0 = self.previewlist[i][3]
+
+                        w = self.plotbox.size[0]
+                        h = self.plotbox.size[1]
+                        b = min(w,h)
+                        scale = b/self.L
+
+                        Color(0.34,0.13,1.0)
+                        Ellipse(pos=(x0*scale+w/2.-self.R*scale/2.,y0*scale+h/2.-self.R*scale/2.),size=(self.R*scale,self.R*scale))
+                        Line(points=[x0*scale+w/2.,y0*scale+h/2.,vx0*scale+w/2.+x0*scale,vy0*scale+w/2.+y0*scale])
+
+                elif(self.our_submenu == 'Subsystems'):
+                    for i in range(0,len(self.previewlist),1):
+                        if (i < (self.n1)**2):
+                            x0 = self.previewlist[i][0]
+                            y0 = self.previewlist[i][1]
+                            vx0 = self.previewlist[i][2]
+                            vy0 = self.previewlist[i][3]
+
+                            w = self.plotbox.size[0]
+                            h = self.plotbox.size[1]
+                            b = min(w,h)
+                            scale = b/self.L
+
+                            Color(0.34,0.13,1.0)
+                            Ellipse(pos=(x0*scale+w/2.-self.R*scale/2.,y0*scale+h/2.-self.R*scale/2.),size=(self.R*scale,self.R*scale))
+                            Line(points=[x0*scale+w/2.,y0*scale+h/2.,vx0*scale+w/2.+x0*scale,vy0*scale+w/2.+y0*scale])
+
+                        else:
+                            x0 = self.previewlist[i][0]
+                            y0 = self.previewlist[i][1]
+                            vx0 = self.previewlist[i][2]
+                            vy0 = self.previewlist[i][3]
+
+                            w = self.plotbox.size[0]
+                            h = self.plotbox.size[1]
+                            b = min(w,h)
+                            scale = b/self.L
+
+                            Color(0.035,0.61,0.17)
+                            Ellipse(pos=(x0*scale+w/2.-self.R*scale/2.,y0*scale+h/2.-self.R*scale/2.),size=(self.R*scale,self.R*scale))
+                            Line(points=[x0*scale+w/2.,y0*scale+h/2.,vx0*scale+w/2.+x0*scale,vy0*scale+w/2.+y0*scale])
+
+                elif(self.our_submenu == 'Brownian'):
+                    for i in range(0,len(self.previewlist),1):
+                        if (i < (self.nsmall)**2):
+                            x0 = self.previewlist[i][0]
+                            y0 = self.previewlist[i][1]
+                            vx0 = self.previewlist[i][2]
+                            vy0 = self.previewlist[i][3]
+
+                            w = self.plotbox.size[0]
+                            h = self.plotbox.size[1]
+                            b = min(w,h)
+                            scale = b/self.L
+
+                            Color(0.34,0.13,1.0)
+                            Ellipse(pos=(x0*scale+w/2.-self.R*scale/2.,y0*scale+h/2.-self.R*scale/2.),size=(self.R*scale,self.R*scale))
+                            Line(points=[x0*scale+w/2.,y0*scale+h/2.,vx0*scale+w/2.+x0*scale,vy0*scale+w/2.+y0*scale])
+
+                        else:
+                            x0 = self.previewlist[i][0]
+                            y0 = self.previewlist[i][1]
+                            vx0 = self.previewlist[i][2]
+                            vy0 = self.previewlist[i][3]
+
+                            w = self.plotbox.size[0]
+                            h = self.plotbox.size[1]
+                            b = min(w,h)
+                            scale = b/self.L
+
+                            Color(0.035,0.61,0.17)
+                            Ellipse(pos=(x0*scale+w/2.-self.Rbig*scale/2.,y0*scale+h/2.-self.Rbig*scale/2.),size=(self.Rbig*scale,self.Rbig*scale))
+                            Line(points=[x0*scale+w/2.,y0*scale+h/2.,vx0*scale+w/2.+x0*scale,vy0*scale+w/2.+y0*scale])
+
+                if(self.our_menu == "Walls"):
+                    w = self.plotbox.size[0]
+                    h = self.plotbox.size[1]
+                    b = min(w,h)
+                    scale = b/self.L
+
+                    self.obj = InstructionGroup()
+                    self.plotbox.canvas.remove(self.obj)
+
+                    #JV: We need to multiply by scale to transform from Angstrom units to Kivy units, that ajust depending on the resulution
+                    self.obj.add(Color(0.37,0.01,0.95))
+                    self.obj.add(Rectangle(pos=(w/2+self.wallpos*scale-self.wallwidth*scale/2,0), size = (self.wallwidth*scale,h/2 - self.holesize*scale/2)))
+                    self.obj.add(Rectangle(pos=(w/2+self.wallpos*scale-self.wallwidth*scale/2,h/2+self.holesize*scale/2), size = (self.wallwidth*scale,h/2 - self.holesize*scale/2)))
+                    self.plotbox.canvas.add(self.obj)
+
+
+    def animate(self,interval):
+        """Draw all the particles for the animation"""
+
+        w = self.plotbox.size[0]
+        h = self.plotbox.size[1]
+        b = min(w,h)
+        scale = b/self.L
+        self.plotbox.canvas.clear()
+
+        N = self.s.particles.size
+        n = int(self.T/self.dt)
+        i = int(self.time/self.dt)
+
+        if(self.our_menu == "Walls"):
+            self.plotbox.canvas.add(self.obj)
+
+        if(self.our_submenu == 'Random Lattice'):
+            with self.plotbox.canvas:
+                for j in range(0,N):
+                    Color(1.0,0.0,0.0)
+                    Ellipse(pos=((self.s.X[i,j])*scale*self.R+w/2.-self.R*scale/2.,(self.s.Y[i,j])*scale*self.R+h/2.-self.R*scale/2.),size=(self.R*scale,self.R*scale))
+
+            self.time += interval*self.speed #Here is where speed accelerates animation
+            self.progressbar.value = (self.time/self.T)*100 #Updates the progress bar.
+
+            self.acucounter += 1
+
+        elif(self.our_submenu == 'Subsystems'):
+            with self.plotbox.canvas:
+                for j in range(0,(self.n1)**2+(self.n2)**2):
+                    if(j < self.n1**2):
+                        Color(0.32,0.86,0.86)
+                        Ellipse(pos=((self.s.X[i,j])*scale*self.R+w/2.-self.R*scale/2.,(self.s.Y[i,j])*scale*self.R+h/2.-self.R*scale/2.),size=(self.R*scale,self.R*scale))
+                    else:
+                        Color(0.43,0.96,0.16)
+                        Ellipse(pos=((self.s.X[i,j])*scale*self.R+w/2.-self.R*scale/2.,(self.s.Y[i,j])*scale*self.R+h/2.-self.R*scale/2.),size=(self.R*scale,self.R*scale))
+
+            self.time += interval*self.speed #Here is where speed accelerates animation
+            self.progressbar.value = (self.time/self.T)*100 #Updates the progress bar.
+
+            self.acucounter += 1
+
+        elif(self.our_submenu == 'Brownian'):
+            with self.plotbox.canvas:
+                for j in range(0,(self.nsmall)**2+(self.nbig)**2):
+                    if(j < self.nsmall**2):
+                        Color(0.32,0.86,0.86)
+                        Ellipse(pos=((self.s.X[i,j])*scale*self.R+w/2.-self.R*scale/2.,(self.s.Y[i,j])*scale*self.R+h/2.-self.R*scale/2.),size=(self.R*scale,self.R*scale))
+                    else:
+                        Color(0.43,0.96,0.16)
+                        Ellipse(pos=((self.s.X[i,j])*scale*self.R+w/2.-self.Rbig*scale/2.,(self.s.Y[i,j])*scale*self.R+h/2.-self.Rbig*scale/2.),size=(self.Rbig*scale,self.Rbig*scale))
+
+                        #JV: These lines inside the condition make the trace of the big particle. We will only draw it if we are not in the "timeinversion" mode.
+                        #JV: THIS FEATURE IS NOT ACTIVE, NEEDS UPDATE: The trace, as it is drawn an ellipse each frame, it stacks on the canvas an doesn't update when
+                        # changing the size of the window, needs to change so each frame draws ALL the ellipses, don't know how this will affect at the FPS
+#                        if(self.inversion == False):
+#                            self.plotbox.canvas.add(self.obj2)
+#                            self.obj2.add(Color(0.43,0.96,0.16))
+#                            self.obj2.add(Ellipse(pos=((self.s.X[i,j])*scale*self.R+w/2.,(self.s.Y[i,j])*scale*self.R+h/2.),size=(self.Rbig*scale/15,self.Rbig*scale/15)))
+
+
+            self.time += interval*self.speed #Here is where speed accelerates animation
+            self.progressbar.value = (self.time/self.T)*100 #Updates the progress bar.
+
+            self.acucounter += 1
+
+        if(self.our_menu == "Walls"):
+            w = self.plotbox.size[0]
+            h = self.plotbox.size[1]
+            b = min(w,h)
+            scale = b/self.L
+
+            self.obj = InstructionGroup()
+            self.plotbox.canvas.remove(self.obj)
+
+            #JV: We need to multiply by scale to transform from Angstrom units to Kivy units, that ajust depending on the resulution
+            self.obj.add(Color(0.37,0.01,0.95))
+            self.obj.add(Rectangle(pos=(w/2+self.wallpos*scale-self.wallwidth*scale/2,0), size = (self.wallwidth*scale,h/2 - self.holesize*scale/2)))
+            self.obj.add(Rectangle(pos=(w/2+self.wallpos*scale-self.wallwidth*scale/2,h/2+self.holesize*scale/2), size = (self.wallwidth*scale,h/2 - self.holesize*scale/2)))
+            self.plotbox.canvas.add(self.obj)
+
+        #JV: Check if the animations has arrived at the end of the performance, if it has, it will stop
+        if(i >= n):
+            self.stop()
+
 """
 JV: Manages and has access to the screens.
 """
@@ -2066,6 +3309,7 @@ class MyScreenManager(ScreenManager):
         super(MyScreenManager, self).__init__(**kwargs)
         self.get_screen('simulation').s_pseudo_init()
         self.get_screen('game').g_pseudo_init()
+        self.get_screen('demo').d_pseudo_init()
 
 """
 JV: Initial screen when the app is opened. This initial screen it's the menu that gives access to the other screens.
@@ -2087,6 +3331,12 @@ class MenuScreen(Screen):
         SimulationScreen()
         self.manager.transition = FadeTransition()
         self.manager.current = 'simulation'
+
+    def transition_MD(self):
+        """JV: Screen transition: from 'menu' to 'demo' """
+        DemoScreen()
+        self.manager.transition = FadeTransition()
+        self.manager.current = 'demo'
 
 """
 JV: This is the app class, when it opens calls the ScreenManager
