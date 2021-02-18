@@ -4,14 +4,35 @@
 # -----------------------------------------------------------
 
 """
-Edited and modified by Jofre Vallès Muns, March 2020
+Edited and modified by Jofre Vallès Muns, March 2020 - February 2021
 from the initial code by Arnau Jurado Romero.
 
 The comments without specifying nothing are from Arnau, and the comments
 like "JV: ..." are made by Jofre.
+
+First of all, if you want to understand the theory behind this program and
+know the basic workflow of it, I suggest you to have a look at the PDF
+document that comes with it, in which we sum up how does this program work and
+how it was made.
+
+The sections of this program are Simulation, Demo and Game.
+
+Simulation is the place where you can compute your own simulations with plenty
+of freedom. In Demo you can see the evolution of the saved and already computed
+simulations and have also a brief explanation of what is happening. Game is a
+section that is only in the code, it does not appear if you open the program and
+that is because it does not work as fluid as we wanted, so it is an unpolished
+idea that is interesting to further develop but for now, we do not show it to
+the user.
 """
 
+
 """
+JV: Even though the program has changed a lot, we still include this brief
+explanation made by Arnau Jurado, in which it explains the basic coding structure
+of this program:
+
+
 particlesinabox app running with kivy using the particlesinabox.kv file.
 
 The numerical method used in this program is found in the physystem.py code.
@@ -112,13 +133,13 @@ from kivy.config import Config
 Config.set('kivy','window_icon','icons/icona.png')
 Config.set('graphics', 'width', '1300')
 Config.set('graphics', 'height', '750')
+Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
 
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from physystem import *
 from numba import jit
-
 
 #Kivy imports
 from kivy.app import App
@@ -158,6 +179,9 @@ class loadwindow(FloatLayout):
 class settingswindow(FloatLayout):
     change_settings = ObjectProperty(None)
     change_units = ObjectProperty(None)
+    cancel = ObjectProperty(None)
+
+class warningwindow(FloatLayout):
     cancel = ObjectProperty(None)
 
 
@@ -281,9 +305,9 @@ class SimulationScreen(Screen):
         self.progress = 0.
         self.our_submenu = 'Random Lattice' #JV: We start at the "Random Lattice" submenu
         self.our_menu = 'In a box' #JV: We start at "In a box" menu. This two variables will store in which submenu/menu we are
-        self.n = 1 #JV: Modify this value if at the start you want to show more than one particle in the simulation (as a default value)
-        self.n1 = 1 #JV: Modify this value if at the start you want to show more than one particle in the subsystem 1 in the subsystems submenu (as a default value)
-        self.n2 = 1 #JV: Same for the second subsystem
+        self.n = 3 #JV: Modify this value if at the start you want to show more than one particle in the simulation (as a default value)
+        self.n1 = 2 #JV: Modify this value if at the start you want to show more than one particle in the subsystem 1 in the subsystems submenu (as a default value)
+        self.n2 = 2 #JV: Same for the second subsystem
         self.nbig = 1 #JV: Number of initial big particles in the "Brownian" submenu
         self.nsmall = 4 #JV: Number of inicial small particles in the "Brownian" submenu
 
@@ -302,7 +326,7 @@ class SimulationScreen(Screen):
         self.mass = 1 #JV: change this if you want to change the initial mass
 
         #Here you can modify the units of the simulation as well as the size of the box.
-        self.V0 = 0.01 #eV
+        self.V0 = 0.0103 #eV
         self.R = 3.405 #A
         self.L = 200. #A
         self.M = 0.04 #kg/mol
@@ -364,10 +388,9 @@ class SimulationScreen(Screen):
                       self.n2 = self.n2slider.value
                       self.add_particle_list(False)
             elif(self.our_submenu == 'Brownian'):
-                if(self.nbigslider.value == self.nbig and self.nsmallslider.value == self.nsmall):
+                if(self.nsmallslider.value == self.nsmall):
                     pass
                 else:
-                    self.nbig = self.nbigslider.value
                     self.nsmall = self.nsmallslider.value
                     self.add_particle_list(False)
         #JV: Conditions for "Free!" menu
@@ -386,10 +409,9 @@ class SimulationScreen(Screen):
                       self.n2 = self.n2slider2.value
                       self.add_particle_list(False)
             elif(self.our_submenu == 'Brownian'):
-                if(self.nbigslider2.value == self.nbig and self.nsmallslider2.value == self.nsmall):
+                if(self.nsmallslider2.value == self.nsmall):
                     pass
                 else:
-                    self.nbig = self.nbigslider2.value
                     self.nsmall = self.nsmallslider2.value
                     self.add_particle_list(False)
         #JV: Conditions for "Walls" menu
@@ -408,10 +430,9 @@ class SimulationScreen(Screen):
                       self.n2 = self.n2slider3.value
                       self.add_particle_list(False)
             elif(self.our_submenu == 'Brownian'):
-                if(self.nbigslider3.value == self.nbig and self.nsmallslider3.value == self.nsmall):
+                if(self.nsmallslider3.value == self.nsmall):
                     pass
                 else:
-                    self.nbig = self.nbigslider3.value
                     self.nsmall = self.nsmallslider3.value
                     self.add_particle_list(False)
 
@@ -508,13 +529,13 @@ class SimulationScreen(Screen):
             if(inversion == False):
                 self.inversion = False
                 if(self.our_menu == "Walls"):
-                    x,y = np.linspace(-self.L/2*0.9,self.wallpos-self.L*0.05,self.n),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n)
+                    x,y = np.linspace(-self.L/2*0.95,self.wallpos-self.L*0.03,self.n),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n)
                 else:
                     x,y = np.linspace(-self.L/2*0.9/self.compact,self.L/2*0.9/self.compact,self.n),np.linspace(-self.L/2*0.9/self.compact,self.L/2*0.9/self.compact,self.n)
 
                 #JV: Physystem.py works in reduced units, so we need to make sure that we are sending the values in this units
                 if(self.si_units):
-                    temp = int(np.round((self.temp1 / 116.03),0))
+                    temp = int(np.round((self.temp1 / 119.53),0))
                 else:
                     temp = self.temp1
 
@@ -567,14 +588,14 @@ class SimulationScreen(Screen):
             if(inversion == False):
                 self.inversion = False
                 if(self.our_menu == "Walls"):
-                    x1,y1 = np.linspace(-self.L/2*0.9,self.wallpos-self.L*0.05,self.n1),np.linspace(self.L/2*0.9,self.L/2*0.1,self.n1)
-                    x2,y2 = np.linspace(-self.L/2*0.9,self.wallpos-self.L*0.05,self.n2),np.linspace(-self.L/2*0.9,-self.L/2*0.1,self.n2)
+                    x1,y1 = np.linspace(-self.L/2*0.95,self.wallpos-self.L*0.03,self.n1),np.linspace(self.L/2*0.9,self.L/2*0.1,self.n1)
+                    x2,y2 = np.linspace(-self.L/2*0.95,self.wallpos-self.L*0.03,self.n2),np.linspace(-self.L/2*0.9,-self.L/2*0.1,self.n2)
                 else:
                     x1,y1 = np.linspace(-self.L/2*0.9,-self.L/2*0.1,self.n1),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n1)
                     x2,y2 = np.linspace(self.L/2*0.1,self.L/2*0.9,self.n2),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.n2)
 
                 if(self.si_units):
-                    temp1 = int(np.round((self.temp1 / 116.03),0))
+                    temp1 = int(np.round((self.temp1 / 119.53),0))
                 else:
                     temp1 = self.temp1
 
@@ -591,7 +612,7 @@ class SimulationScreen(Screen):
                     vy1 = (vy1-vcm1[1])*np.sqrt(2*temp1/kin1)
 
                 if(self.si_units):
-                    temp2 = int(np.round((self.temp2 / 116.03),0))
+                    temp2 = int(np.round((self.temp2 / 119.53),0))
                 else:
                     temp2 = self.temp2
 
@@ -646,22 +667,26 @@ class SimulationScreen(Screen):
 
         elif(self.our_submenu == 'Brownian'):
             if(self.our_menu == "In a box"):
-                self.nbig = int(self.nbigslider.value)
                 self.nsmall = int(self.nsmallslider.value)
             elif(self.our_menu == "Free!"):
-                self.nbig = int(self.nbigslider2.value)
                 self.nsmall = int(self.nsmallslider2.value)
 
             if(inversion == False):
                 self.inversion = False
                 #JV: corresponding to the small particles variables
                 if(self.our_menu == "Walls"):
-                    x,y = np.linspace(-self.L/2*0.9,self.wallpos-self.L*0.05,self.nsmall),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.nsmall)
+                    x,y1 = np.linspace(-self.L/2*0.9,self.wallpos-self.L*0.05,self.nsmall),np.linspace(self.L/2*0.9,self.L/2*0.12,int(self.nsmall/2))
+                    y2 = np.linspace(-self.L/2*0.9,-self.L/2*0.12,int(self.nsmall/2))
+                    y = np.append(y1,y2)
                 else:
-                    x,y = np.linspace(-self.L/2*0.9,self.L/2*0.9,self.nsmall),np.linspace(-self.L/2*0.9,self.L/2*0.9,self.nsmall)
+                    x1,y1 = np.linspace(-self.L/2*0.9,-self.L/2*0.1,int(self.nsmall/2)),np.linspace(-self.L/2*0.9,-self.L/2*0.1,int(self.nsmall/2))
+                    x2,y2 = np.linspace(self.L/2*0.9,self.L/2*0.1,int(self.nsmall/2)),np.linspace(self.L/2*0.9,self.L/2*0.1,int(self.nsmall/2))
+                    x = np.append(x1,x2)
+                    y = np.append(y1,y2)
+                    # x,y = np.linspace(-self.L/2*0.95,self.L/2*0.95,self.nsmall),np.linspace(-self.L/2*0.95,self.L/2*0.95,self.nsmall)
 
                 if(self.si_units):
-                    temp = int(np.round((self.temp1 / 116.03),0))
+                    temp = int(np.round((self.temp1 / 119.53),0))
                 else:
                     temp = self.temp1
 
@@ -766,7 +791,7 @@ class SimulationScreen(Screen):
         #JV: If we modify as we said in the previous line, change the +10 in the part of energy representation in the animate() function
         if(self.si_units):
             #JV: Physystem.py works with reduced units, so we need to transform this values if we are using currently the SI Units
-            self.s.solveverlet(int(5 * np.round(self.T /(2.19 * 5)))+20,float(5 * np.round(self.dt /(2.19 * 5), 4)))
+            self.s.solveverlet(int(5 * np.round(self.T /(2.16 * 5)))+20,float(5 * np.round(self.dt /(2.16 * 5), 4)))
         else:
             self.s.solveverlet(self.T+20,self.dt)
 
@@ -802,15 +827,15 @@ class SimulationScreen(Screen):
             self.s.Vacu = np.array(self.s.Vacu) * 155.42
 
             #JV: The temperature values are in Kelvin
-            self.s.T = np.array(self.s.T) * 116.03 #JV: We get this value from self.V0/kB (Boltzmann-constant)
+            self.s.T = np.array(self.s.T) * 119.53 #JV: We get this value from self.V0/kB (Boltzmann-constant)
 
             if(self.our_submenu == "Subsystems"):
-                self.s.T1 = np.array(self.s.T1) * 116.03
-                self.s.T2 = np.array(self.s.T2) * 116.03
+                self.s.T1 = np.array(self.s.T1) * 119.53
+                self.s.T2 = np.array(self.s.T2) * 119.53
 
             if(self.simulation_type != "Brownian"):
                 #JV: The entropy in aJ/K (10^-18 J/K)
-                self.s.entropy = np.array(self.s.entropy) * 16.022/116.03
+                self.s.entropy = np.array(self.s.entropy) * 16.022/119.53
             else:
                 #JV: The distance^2 value now is in Angstrom^2 (10^-10 m)^2
                 self.s.X2 = np.array(self.s.X2) * (self.R)**2
@@ -859,8 +884,8 @@ class SimulationScreen(Screen):
     def save(self,path,name):
         #I put all the relevant data in a numpy array and save it with pickle
         #The order is important for the loading process.
-        info_img = "icons/gray_demo.png" #JV: This image is just a gray plain color. If you want to show an info image, change this to the path of this image (e.g. "saves/Subsys_1.png")
-        # info_img = "saves_img/Subsys_1.png"
+        info_img = "icons/gray_demo.png" #JV: This image is just a gray plain color. If you want to show an info image, change this to the path of this image (e.g. "saves_img/Subsys_1.png")
+        # color gris per defecte = "saves_img/Subsys_1.png"
         savedata = np.array([self.s,self.T,self.dt,self.L,self.previewlist,self.our_menu,self.our_submenu,self.n1,self.n2,self.nsmall,self.wallpos,self.holesize,self.Rbig,self.temp1,self.temp2,self.compact,self.si_units,info_img])
         with open(os.path.join(path,name+'.dat'),'wb') as file:
             pickle.dump(savedata,file)
@@ -881,19 +906,19 @@ class SimulationScreen(Screen):
             self._popup.content.reduced_button.state = "normal"
 
             #JV: We now display the dt settings in the correct SI Units
-            self._popup.content.dt_slider.min = float(np.round(self.dt_slider_min * 2.19, 3)) #JV: Go to change_units() to understand the "2.19" factor
-            self._popup.content.dt_slider.max = float(np.round(self.dt_slider_max * 2.19, 3))
-            self._popup.content.dt_slider.step = float(np.round(self.dt_slider_step * 2.19, 3))
+            self._popup.content.dt_slider.min = float(np.round(self.dt_slider_min * 2.16, 3)) #JV: Go to change_units() to understand the "2.16" factor
+            self._popup.content.dt_slider.max = float(np.round(self.dt_slider_max * 2.16, 3))
+            self._popup.content.dt_slider.step = float(np.round(self.dt_slider_step * 2.16, 3))
             self._popup.content.dt_units_label.text = "(·10^-12 s)"
 
             #JV: We display the correct temperature units
-            self._popup.content.temp1_slider.min = float(np.round(self.temp_slider_min * 116.03, 0)) #JV: Go to change_units() to understand the "116.03" factor
-            self._popup.content.temp1_slider.max = float(np.round(self.temp_slider_max * 116.03, 0))
-            self._popup.content.temp1_slider.step = float(np.round(self.temp_slider_step * 116.03, 0))
+            self._popup.content.temp1_slider.min = float(np.round(self.temp_slider_min * 119.53, 0)) #JV: Go to change_units() to understand the "119.53" factor
+            self._popup.content.temp1_slider.max = float(np.round(self.temp_slider_max * 119.53, 0))
+            self._popup.content.temp1_slider.step = float(np.round(self.temp_slider_step * 119.53, 0))
 
-            self._popup.content.temp2_slider.min = float(np.round(self.temp_slider_min * 116.03, 0))
-            self._popup.content.temp2_slider.max = float(np.round(self.temp_slider_max * 116.03, 0))
-            self._popup.content.temp2_slider.step = float(np.round(self.temp_slider_step * 116.03, 0))
+            self._popup.content.temp2_slider.min = float(np.round(self.temp_slider_min * 119.53, 0))
+            self._popup.content.temp2_slider.max = float(np.round(self.temp_slider_max * 119.53, 0))
+            self._popup.content.temp2_slider.step = float(np.round(self.temp_slider_step * 119.53, 0))
 
             self._popup.content.units_temp1.text = " K"
             self._popup.content.units_temp2.text = " K"
@@ -956,40 +981,40 @@ class SimulationScreen(Screen):
                 self.s.U = np.array(self.s.U) * self.V0 * 16.022
 
                 #JV: The time values are in ps (pico-seconds, 10^-12 s)
-                self.T = int(self.T * 2.19) #JV: We get this number doing self.R*sqrt(self.m/self.V0) in SI Units
-                self.timeslider.min = int(self.timeslider.min * 2.19)
-                self.timeslider.max = int(self.timeslider.max * 2.19)
+                self.T = int(self.T * 2.16) #JV: We get this number doing self.R*sqrt(self.m/self.V0) in SI Units
+                self.timeslider.min = int(self.timeslider.min * 2.16)
+                self.timeslider.max = int(self.timeslider.max * 2.16)
                 self.timeslider.value = self.T
-                self.dt = np.round(self.dt * 2.19, 4)
+                self.dt = np.round(self.dt * 2.16, 4)
 
                 #JV: The velocity values are in m/s
                 self.s.V = np.array(self.s.V) * 155.42 #JV: We get this number from sqrt(self.V0/self.m) in SI Units
                 self.s.Vacu = np.array(self.s.Vacu) * 155.42
 
                 #JV: The temperature values are in Kelvin
-                self.s.T = np.array(self.s.T) * 116.03 #JV: We get this value from self.V0/kB (Boltzmann-constant)
-                self.temp1 = np.round(self.temp1*116.03, 0)
-                self.temp2 = np.round(self.temp2*116.03, 0)
+                self.s.T = np.array(self.s.T) * 119.53 #JV: We get this value from self.V0/kB (Boltzmann-constant)
+                self.temp1 = np.round(self.temp1*119.53, 0)
+                self.temp2 = np.round(self.temp2*119.53, 0)
 
                 if(self.simulation_type == "Subsystems"):
-                    self.s.T1 = np.array(self.s.T1) * 116.03
-                    self.s.T2 = np.array(self.s.T2) * 116.03
+                    self.s.T1 = np.array(self.s.T1) * 119.53
+                    self.s.T2 = np.array(self.s.T2) * 119.53
 
                 if(self.simulation_type != "Brownian"):
                     #JV: The entropy in aJ/K (10^-18 J/K)
-                    self.s.entropy = np.array(self.s.entropy) * 16.022/116.03
+                    self.s.entropy = np.array(self.s.entropy) * 16.022/119.53
                 else:
                     #JV: The distance^2 value now is in Angstrom^2 (10^-10 m)^2
                     self.s.X2 = np.array(self.s.X2) * (self.R)**2
             else:
                 #JV: Time values in ps (pico-seconds, 10^-12 s)
-                self.T = int(self.T * 2.19)
-                self.timeslider.min = int(self.timeslider.min * 2.19)
-                self.timeslider.max = int(self.timeslider.max * 2.19)
+                self.T = int(self.T * 2.16)
+                self.timeslider.min = int(self.timeslider.min * 2.16)
+                self.timeslider.max = int(self.timeslider.max * 2.16)
                 self.timeslider.value = self.T
-                self.dt = float(np.round(self.dt * 2.19, 4))
-                self.temp1 = np.round(self.temp1*116.03, 0)
-                self.temp2 = np.round(self.temp2*116.03, 0)
+                self.dt = float(np.round(self.dt * 2.16, 4))
+                self.temp1 = np.round(self.temp1*119.53, 0)
+                self.temp2 = np.round(self.temp2*119.53, 0)
 
             self.stop()
         else: #JV: To go from SI Units to reduced Units, we only have to divide by the factors in the previous condition
@@ -999,39 +1024,40 @@ class SimulationScreen(Screen):
                 self.s.U = np.array(self.s.U) / (self.V0 * 16.022)
 
                 #JV: Time values
-                self.T = int(5 * np.round(self.T /(2.19 * 5))) #JV: We get this number doing self.R*sqrt(self.m/self.V0) in SI Units. We multiply and divide by 5 so we get a number multiple of 5, this helps when we will have to compute
-                self.timeslider.min = int(5 * np.round(self.timeslider.min /(2.19 * 5)))
-                self.timeslider.max = int(5 * np.round(self.timeslider.max /(2.19 * 5)))
+                self.T = int(5 * np.round(self.T /(2.16 * 5))) #JV: We get this number doing self.R*sqrt(self.m/self.V0) in SI Units. We multiply and divide by 5 so we get a number multiple of 5, this helps when we will have to compute
+                self.timeslider.min = int(5 * np.round(self.timeslider.min /(2.16 * 5)))
+                self.timeslider.max = int(5 * np.round(self.timeslider.max /(2.16 * 5)))
                 self.timeslider.value = self.T
-                self.dt = float(5 * np.round(self.dt /(2.19 * 5), 4))
+                self.dt = float(5 * np.round(self.dt /(2.16 * 5), 4))
 
                 #JV: Velocity values
                 self.s.V = np.array(self.s.V) / 155.42 #JV: We get this number from sqrt(self.V0/self.m) in SI Units
                 self.s.Vacu = np.array(self.s.Vacu) / 155.42
 
+
                 #JV: Temperature values
-                self.s.T = np.array(self.s.T) / 116.03 #JV: We get this value from self.V0/kB (Boltzmann-constant)
-                self.temp1 = int(np.round((self.temp1 / 116.03),0))
-                self.temp2 = int(np.round((self.temp2 / 116.03),0))
+                self.s.T = np.array(self.s.T) / 119.53 #JV: We get this value from self.V0/kB (Boltzmann-constant)
+                self.temp1 = int(np.round((self.temp1 / 119.53),0))
+                self.temp2 = int(np.round((self.temp2 / 119.53),0))
 
                 if(self.simulation_type == "Subsystems"):
-                    self.s.T1 = np.array(self.s.T1) / 116.03
-                    self.s.T2 = np.array(self.s.T2) / 116.03
+                    self.s.T1 = np.array(self.s.T1) / 119.53
+                    self.s.T2 = np.array(self.s.T2) / 119.53
 
                 if(self.simulation_type != "Brownian"):
                     #JV: The entropy in aJ/K (10^-18 J/K)
-                    self.s.entropy = np.array(self.s.entropy) * 116.03/16.022
+                    self.s.entropy = np.array(self.s.entropy) * 119.53/16.022
                 else:
                     #JV: The distance^2 value
                     self.s.X2 = np.array(self.s.X2) / (self.R)**2
             else:
-                self.T = int(5 * np.round(self.T /(2.19 * 5))) #JV: We get this number doing self.R*sqrt(self.m/self.V0) in SI Units
-                self.timeslider.min = int(5 * np.round(self.timeslider.min /(2.19 * 5)))
-                self.timeslider.max = int(5 * np.round(self.timeslider.max /(2.19 * 5)))
+                self.T = int(5 * np.round(self.T /(2.16 * 5))) #JV: We get this number doing self.R*sqrt(self.m/self.V0) in SI Units
+                self.timeslider.min = int(5 * np.round(self.timeslider.min /(2.16 * 5)))
+                self.timeslider.max = int(5 * np.round(self.timeslider.max /(2.16 * 5)))
                 self.timeslider.value = self.T
-                self.dt = float(5 * np.round(self.dt /(2.19 * 5), 4))
-                self.temp1 = int(np.round((self.temp1 / 116.03),0))
-                self.temp2 = int(np.round((self.temp2 / 116.03),0))
+                self.dt = float(5 * np.round(self.dt /(2.16 * 5), 4))
+                self.temp1 = int(np.round((self.temp1 / 119.53),0))
+                self.temp2 = int(np.round((self.temp2 / 119.53),0))
             self.stop()
 
     def load(self,path,name,demo=False):
@@ -1118,17 +1144,14 @@ class SimulationScreen(Screen):
 
             if(self.our_menu == "In a box"):
                 self.inaboxmenu.switch_to(self.brwmenu)
-                self.nbigslider.value = int(np.sqrt(self.s.particles.size - self.nsmall**2))
                 self.nsmallslider.value = self.nsmall
 
             elif(self.our_menu == "Free!"):
                 self.freemenu.switch_to(self.brwmenu2)
-                self.nbigslider2.value = int(np.sqrt(self.s.particles.size - self.nsmall**2))
                 self.nsmallslider2.value = self.nsmall
 
             elif(self.our_menu == "Walls"):
                 self.wallmenu.switch_to(self.brwmenu3)
-                self.nbigslider3.value = int(np.sqrt(self.s.particles.size - self.nsmall**2))
                 self.nsmallslider3.value = self.nsmall
 
         self.ready = True
@@ -1183,7 +1206,7 @@ class SimulationScreen(Screen):
         # Doing this we make sure the user doesn't enter in a loop of time inversions that are not what we want ( :) )
         if(self.inversion == False and self.time > 5.):
             if(self.si_units):
-                self.T = self.time * 2.19 #JV: Go to change_units() to understand the "2.19" factor"
+                self.T = self.time * 2.16 #JV: Go to change_units() to understand the "2.16" factor"
             else:
                 self.T = self.time
             self.stop()
@@ -1193,20 +1216,21 @@ class SimulationScreen(Screen):
         pass
 
     def plotting(self,interval):
-        """JV: This function is the responsible of updating the plots"""
+        """JV: This function is the responsible of updating the plots.
+
+        I think that the MB curve needs some ajust, I'm not sure it works properly'
+        """
         i = int(self.time/self.dt)
         pause = 0.001
         n_bins = 15 #JV: The number of bins that we will be plotting in the histogram
 
         if(self.si_units):
-            delta = 5*2.19/self.dt
+            delta = 5*2.16/self.dt
         else:
             delta = 5./self.dt
 
         if(self.our_submenu == 'Random Lattice'):
             if(self.plotmenu.current_tab.text == 'Energy'): #JV: instantaneous energy graphic
-                #JV: The +10 is because we actually compute 10 units of time more than we represent, check computation() fucntion for more detail
-#                t = np.arange(self.dt,self.T+10+self.dt,self.dt)
                 self.enplotax.plot(self.tplot[self.prev_i_en:i],self.s.K[self.prev_i_en:i],'r-',label = 'Kinetic Energy', linewidth = 2.2)
                 self.enplotax.plot(self.tplot[self.prev_i_en:i],self.s.U[self.prev_i_en:i],'b-',label = 'Potential Energy')
                 self.enplotax.plot(self.tplot[self.prev_i_en:i],self.s.K[self.prev_i_en:i]+self.s.U[self.prev_i_en:i],'g-',label = 'Total Energy')
@@ -1215,13 +1239,11 @@ class SimulationScreen(Screen):
                 plt.pause(pause)
 
             elif(self.plotmenu.current_tab.text == 'Momentum'): #Instantaneous momentum histogram
-#                vs = np.linspace(0,self.s.V.max()+0.5,100) #JV: The +0.5 is because we want to see the whole last possible bar
                 if(self.counter % self.update_momentum == 0):
                     self.histax.cla()
                     self.histax.set_xlim([0,self.s.V.max()+0.5])
                     y_lim = 0.5*len(self.s.V[i,:])
                     self.histax.set_ylim([0,y_lim])
-                    # self.histax.set_ylim([0,np.ceil(self.s.MB.max())])
                     if(self.si_units):
                         self.histax.set_xlabel('v (m/s)')
                         self.histax.set_ylabel('Number of particles')
@@ -1229,18 +1251,13 @@ class SimulationScreen(Screen):
                         hist,bins = np.histogram(self.s.V[i,:], bins=np.arange(0,self.s.V.max()+50,bin_width))
                         center = (bins[:-1] + bins[1:]) / 2
                         self.histax.bar(center, hist, align='center', width=bin_width*0.8)
-                        # self.histax.hist(self.s.V[i,:],bins=np.arange(0,self.s.V.max()+10, 100),density=True,color=[0.0,0.0,1.0], histtype = self.histtype)
                     else:
                         self.histax.set_xlabel('v')
                         self.histax.set_ylabel('Number of particles')
-                        # self.histax.hist(self.s.V[i,:],bins=np.arange(0,self.s.V.max()+1, 0.334),rwidth=0.75,density=True,color=[0.0,0.0,1.0], histtype = self.histtype)
                         bin_width = (self.s.V.max()+1)/n_bins
                         hist,bins = np.histogram(self.s.V[i,:], bins=np.arange(0,self.s.V.max()+1,bin_width))
                         center = (bins[:-1] + bins[1:]) / 2
                         self.histax.bar(center, hist, align='center', width=bin_width*0.8)
-#                    self.hist.subplots_adjust(0.125,0.19,0.9,0.9)
-#                    self.histax.yaxis.labelpad = 10
-#                    self.histax.xaxis.labelpad = -0.5
                     self.s.MB[i,:] = self.s.MB[i,:] * y_lim #JV: The MB curve goes from 0 to 1, so we need to adapt it to our plot.
                     if(self.si_units):
                         self.histax.text(self.vsplot[np.argmax(self.s.MB[i,:])-int(len(self.vsplot)*0.2)],self.s.MB[i,:].max()*1.1,"T = "+str(np.round(self.s.T[i],decimals=3))+" K", fontsize=15, color = "red", alpha = 0.85)
@@ -1251,13 +1268,11 @@ class SimulationScreen(Screen):
                     plt.pause(pause)
 
             elif(self.plotmenu.current_tab.text == 'Acu'): #Accumulated momentum histogram
-#                self.acuhistax.clear() #JV: We clean the graphic although we don't draw anything yet (to clean anything left in a previous simulation)
                 if(self.si_units):
-                    wait_time = 30. * 2.19 #JV: Go to change_units() to understand the "2.19" factor"
+                    wait_time = 30. * 2.16 #JV: Go to change_units() to understand the "2.16" factor"
                 else:
                     wait_time = 30.
                 if(self.time > wait_time):
-#                    vs = np.linspace(0,self.s.V.max()+0.5,100)
                     self.acuhistax.cla()
                     self.acuhistax.set_xlim([0,self.s.V.max()+0.5])
                     y_lim = 1
@@ -1271,23 +1286,18 @@ class SimulationScreen(Screen):
                         self.acuhistax.set_ylim([0,y_lim])
                         center = (bins[:-1] + bins[1:]) / 2
                         self.acuhistax.bar(center, hist, align='center', width=bin_width*0.8)
-                        # self.acuhistax.hist(self.s.Vacu[int((i-int((wait_time/(2.19*self.dt))))/delta)],bins=np.arange(0, self.s.V.max() + 10, 70),density=True, histtype = self.histtype)
                     else:
                         self.acuhistax.set_xlabel('v')
                         self.acuhistax.set_ylabel('Number of particles relative')
                         bin_width = (self.s.V.max())/n_bins
                         hist,bins = np.histogram(self.s.Vacu[int((i-int((wait_time/(self.dt))))/delta)], bins=np.arange(0,self.s.V.max(),bin_width),density=True)
-                        y_lim = 2.4*hist.max()
                         self.acuhistax.set_ylim([0,y_lim])
                         center = (bins[:-1] + bins[1:]) / 2
                         self.acuhistax.bar(center, hist, align='center', width=bin_width*0.8)
-                        # self.acuhistax.hist(self.s.Vacu[int((i-int((wait_time/self.dt)))/delta)],bins=np.arange(0, self.s.V.max() + 0.2, 0.35),density=True, histtype = self.histtype)
-                    # self.acuhistax.plot(self.vsplot,self.s.MBacu[int((i-int((wait_time/self.dt)))/delta)]*y_lim,'r-')
                     self.acuhistcanvas.draw()
                     plt.pause(pause)
 
             elif(self.plotmenu.current_tab.text == 'Entropy'):
-#                t = np.arange(self.dt,self.T+10+self.dt,self.dt)
                 self.extraplotax.plot(self.tplot[self.prev_i_ex:i],self.s.entropy[self.prev_i_ex:i],'g-')
                 self.extraplotcanvas.draw()
                 self.prev_i_ex = i
@@ -1297,7 +1307,6 @@ class SimulationScreen(Screen):
             #JV: Here we do the graphics for this submenu, check the comments from the previous submenu for more info
             #JV: We will draw the two subsystems in two diferent colors
             if(self.plotmenu.current_tab.text == 'Energy'):
-#                t = np.arange(self.dt,self.T+10+self.dt,self.dt)
                 self.enplotax.plot(self.tplot[self.prev_i_en:i],self.s.K[self.prev_i_en:i],'r-',label = 'Kinetic Energy', linewidth = 2.2)
                 self.enplotax.plot(self.tplot[self.prev_i_en:i],self.s.U[self.prev_i_en:i],'b-',label = 'Potential Energy')
                 self.enplotax.plot(self.tplot[self.prev_i_en:i],self.s.K[self.prev_i_en:i]+self.s.U[self.prev_i_en:i],'g-',label = 'Total Energy')
@@ -1306,7 +1315,6 @@ class SimulationScreen(Screen):
                 plt.pause(pause)
 
             elif(self.plotmenu.current_tab.text == 'Momentum'): #Instantaneous momentum histogram
-#                vs = np.linspace(0,self.s.V.max()+0.5,100) #JV: The +0.5 is because we want to see the whole last possible bar
                 if(self.counter % self.update_momentum == 0):
                     self.histax.cla()
                     self.histax.set_xlim([0,self.s.V.max()+0.5])
@@ -1357,11 +1365,10 @@ class SimulationScreen(Screen):
 
             elif(self.plotmenu.current_tab.text == 'Acu'): #Accumulated momentum histogram
                 if(self.si_units):
-                    wait_time = 30. * 2.19 #JV: Go to change_units() to understand the "2.19" factor"
+                    wait_time = 30. * 2.16 #JV: Go to change_units() to understand the "2.16" factor"
                 else:
                     wait_time = 30.
                 if(self.time > wait_time):
-#                    vs = np.linspace(0,self.s.V.max()+0.5,100)
                     self.acuhistax.cla()
                     self.acuhistax.set_xlim([0,self.s.V.max()+0.5])
                     y_lim = 1
@@ -1375,7 +1382,6 @@ class SimulationScreen(Screen):
                         self.acuhistax.set_ylim([0,y_lim])
                         center = (bins[:-1] + bins[1:]) / 2
                         self.acuhistax.bar(center, hist, align='center', width=bin_width*0.8)
-                        # self.acuhistax.hist(self.s.Vacu[int((i-int((wait_time/(2.19*self.dt))))/delta)],bins=np.arange(0, self.s.V.max() + 10, 70),density=True, histtype = self.histtype)
                     else:
                         self.acuhistax.set_xlabel('v')
                         self.acuhistax.set_ylabel('Number of particles relative')
@@ -1385,13 +1391,10 @@ class SimulationScreen(Screen):
                         self.acuhistax.set_ylim([0,y_lim])
                         center = (bins[:-1] + bins[1:]) / 2
                         self.acuhistax.bar(center, hist, align='center', width=bin_width*0.8)
-                        # self.acuhistax.hist(self.s.Vacu[int((i-int((wait_time/self.dt)))/delta)],bins=np.arange(0, self.s.V.max() + 0.2, 0.35),density=True, histtype = self.histtype)
-                    # self.acuhistax.plot(self.vsplot,self.s.MBacu[int((i-int((wait_time/self.dt)))/delta)]*y_lim,'r-')
                     self.acuhistcanvas.draw()
                     plt.pause(pause)
 
             elif(self.plotmenu.current_tab.text == 'Entropy'):
-#                t = np.arange(self.dt,self.T+10+self.dt,self.dt)
                 self.extraplotax.plot(self.tplot[self.prev_i_ex:i],self.s.entropy[self.prev_i_ex:i],'g-')
                 self.extraplotcanvas.draw()
                 self.prev_i_ex = i
@@ -1399,7 +1402,6 @@ class SimulationScreen(Screen):
 
         elif(self.our_submenu == 'Brownian'):
             if(self.plotmenu.current_tab.text == 'Energy'):
-#                t = np.arange(self.dt,self.T+10+self.dt,self.dt)
                 self.enplotax.plot(self.tplot[self.prev_i_en:i],self.s.K[self.prev_i_en:i],'r-',label = 'Kinetic Energy', linewidth = 2.2)
                 self.enplotax.plot(self.tplot[self.prev_i_en:i],self.s.U[self.prev_i_en:i],'b-',label = 'Potential Energy')
                 self.enplotax.plot(self.tplot[self.prev_i_en:i],self.s.K[self.prev_i_en:i]+self.s.U[self.prev_i_en:i],'g-',label = 'Total Energy')
@@ -1408,13 +1410,11 @@ class SimulationScreen(Screen):
                 plt.pause(pause)
 
             elif(self.plotmenu.current_tab.text == 'Momentum'): #Instantaneous momentum histogram
-#                vs = np.linspace(0,self.s.V.max()+0.5,100) #JV: The +0.5 is because we want to see the whole last possible bar
                 if(self.counter % self.update_momentum == 0):
                     self.histax.cla()
                     self.histax.set_xlim([0,self.s.V.max()+0.5])
                     y_lim = 0.6*len(self.s.V[i,:])
                     self.histax.set_ylim([0,y_lim])
-                    # self.histax.set_ylim([0,np.ceil(self.s.MB.max())])
                     if(self.si_units):
                         self.histax.set_xlabel('v (m/s)')
                         self.histax.set_ylabel('Number of particles')
@@ -1454,7 +1454,7 @@ class SimulationScreen(Screen):
 
             elif(self.plotmenu.current_tab.text == 'Acu'): #Accumulated momentum histogram
                 if(self.si_units):
-                    wait_time = 30. * 2.19 #JV: Go to change_units() to understand the "2.19" factor"
+                    wait_time = 30. * 2.16 #JV: Go to change_units() to understand the "2.16" factor"
                 else:
                     wait_time = 30.
                 if(self.time > wait_time):
@@ -1472,7 +1472,7 @@ class SimulationScreen(Screen):
                         self.acuhistax.set_ylim([0,y_lim])
                         center = (bins[:-1] + bins[1:]) / 2
                         self.acuhistax.bar(center, hist, align='center', width=bin_width*0.8)
-                        # self.acuhistax.hist(self.s.Vacu[int((i-int((wait_time/(2.19*self.dt))))/delta)],bins=np.arange(0, self.s.V.max() + 10, 70),density=True, histtype = self.histtype)
+                        # self.acuhistax.hist(self.s.Vacu[int((i-int((wait_time/(2.16*self.dt))))/delta)],bins=np.arange(0, self.s.V.max() + 10, 70),density=True, histtype = self.histtype)
                     else:
                         self.acuhistax.set_xlabel('v')
                         self.acuhistax.set_ylabel('Number of particles relative')
@@ -1744,7 +1744,7 @@ class SimulationScreen(Screen):
 
             #Here is where speed accelerates animation
             if(self.si_units):
-                self.time += interval*self.speed*2.19 #JV: Go to change_units() to understand the "2.19" factor"
+                self.time += interval*self.speed*2.16 #JV: Go to change_units() to understand the "2.16" factor"
             else:
                 self.time += interval*self.speed
 
@@ -1763,7 +1763,7 @@ class SimulationScreen(Screen):
 
             #Here is where speed accelerates animation
             if(self.si_units):
-                self.time += interval*self.speed*2.19 #JV: Go to change_units() to understand the "2.19" factor"
+                self.time += interval*self.speed*2.16 #JV: Go to change_units() to understand the "2.16" factor"
             else:
                 self.time += interval*self.speed
 
@@ -1791,7 +1791,7 @@ class SimulationScreen(Screen):
 
             #Here is where speed accelerates animation
             if(self.si_units):
-                self.time += interval*self.speed*2.19 #JV: Go to change_units() to understand the "2.19" factor"
+                self.time += interval*self.speed*2.16 #JV: Go to change_units() to understand the "2.16" factor"
             else:
                 self.time += interval*self.speed
 
@@ -1849,7 +1849,7 @@ class SimulationScreen(Screen):
 
 @jit(nopython=True)
 def close_particles_list(r2,m,N,L):
-    """JV: This functions returns a list (a matrix) where each rows saves m indexs corresponding to the m
+    """JV: This functions returns a NxM matrix where each rows saves m indexs corresponding to the m
     closest particles. We will use the r2 matrix calculated in fv() function (go there for more information),
     that contains the distance between our particles"""
     dist = r2.copy()
@@ -2051,14 +2051,16 @@ def vel_verlet(t,dt,r0,v0,a0,dx,dy,r2,close_list,m,r,R,L,N,U,Nlist,append,key_wa
                     if (bouncing_static[i] != 0):
                         bouncing_static[i] -= 1
 
-#                    print(static_is_inhole[i,:],"->",static_is_inhole[i,:].any(), i)
-
     return r1[0,:],r1[1,:],v1[0,:],v1[1,:],a1
 
 """
 JV: In this class we will try to make a "live" computation, so we don't need to wait to compute to start playing. Only needs
- physystem.py because we will use the particle() class that is defined there, but all the math is done here. Let's see if something
- like this is "playable".
+ physystem.py because we will use the particle() class that is defined there, but all the math is done here.
+
+ UPDATE: As it's not "playable" as we wanted to, this section does not appear at the final program accessible by the user.
+ It is still interesting, but needs more development.
+
+ IF YOU WANT TO SEE THIS SECTION IN THE PROGRAM, UNCOMMENT THE BLOCK OF CODE IN "particlesinabox.kv" between the lines 44-57
 """
 class GameScreen(Screen):
     charge = 1.
@@ -2332,10 +2334,8 @@ class GameScreen(Screen):
         r2 = np.square(dx)+np.square(dy)
 
         if(np.round((self.time/self.dt*self.dt)%0.3,2) == 0): #JV: every certain amount of steps we update the list
-#            print(self.time)
             self.close_list = close_particles_list(r2,self.Nlist,N,self.L) #JV: matrix that contains in every row the indexs of the m closest particles
 
-        #vel_verlet(t,dt,r0,v0,a0,dx,dy,r2,close_list,m,r,R,L,N,U,Nlist,append,key_wall,key_x_val,key_y_val,wall_h,wall_w,wallpos,wallwidth,holesize,n_holes,bouncing_key,bouncing_static,w,h,b,scale):
         self.X,self.Y,self.Vx,self.Vy,self.a1 = vel_verlet(self.time,self.dt,np.array([self.X0,self.Y0]),np.array([self.VX0,self.VY0]),self.a0,dx,dy,r2,self.close_list,self.m,self.r,self.R,self.L/self.R,N,self.U_val,self.Nlist,self.draw_energy,self.key_wall,self.key_x_val,self.key_y_val,self.wall_h,self.wall_w,self.wallpos,self.wallwidth,self.holesize,self.n_holes,self.bouncing_key,self.bouncing_static,w,h,b,scale)
 
         #JV: We keep track of this step in time:
@@ -2385,7 +2385,6 @@ class GameScreen(Screen):
             self.enplotax.set_ylabel('Energy')
 
             if(i > 2):
-    #            print(len(self.K), i)
                 self.enplotax.set_xlim([0,self.t[i-1]])
                 self.enplotax.set_ylim([0,(np.array(self.K[0:i-1]).max()+np.array(self.U[0:i-1]).max())+np.uint(np.array(self.K[0:i-1]).max()+np.array(self.U[0:i-1]).max())/40])
 
@@ -2500,10 +2499,9 @@ class DemoScreen(Screen):
 
         if(self.total_demos == 0):
             print("You don't have any demo loaded! You need to have at least one to go to the Demo page.")
-            self.transition_DM()
-
-        self.simulationlabel.text = "Demo " + str(self.n_demo + 1) #JV: We count starting from 1 because humans prefer it this way
-        self.simulationname.text = os.path.splitext(os.listdir(os.path.join(os.path.dirname(os.path.abspath(__file__)),"saves"))[self.n_demo])[0] #JV: We show the title of the simulation (without the extension)
+        else:
+            self.simulationlabel.text = "Demo " + str(self.n_demo + 1) #JV: We count starting from 1 because humans prefer it this way
+            self.simulationname.text = os.path.splitext(os.listdir(os.path.join(os.path.dirname(os.path.abspath(__file__)),"saves"))[self.n_demo])[0] #JV: We show the title of the simulation (without the extension)
         self.time = 0.
         self.T = 0
         self.dt = 0.01 #JV: Because the time of computation is a number that ends with 0 or 5 (we can change this in the kivy file), we
@@ -2671,47 +2669,54 @@ class DemoScreen(Screen):
         path = os.path.join(os.path.dirname(os.path.abspath(__file__)),"saves")
         demos = os.listdir(path)
 
-        with open(os.path.join(path,demos[self.n_demo]),'rb') as file:
-            savedata = pickle.load(file)
+        if(self.total_demos != 0):
+            with open(os.path.join(path,demos[self.n_demo]),'rb') as file:
+                savedata = pickle.load(file)
 
-        name = demos[self.n_demo]
+            name = demos[self.n_demo]
 
-        self.s = savedata[0]
-        self.T = savedata[1]
-        self.dt = savedata[2]
-        self.L = savedata[3]
-        self.previewlist = savedata[4]
-        self.our_menu = savedata[5] #JV: To know in which menu corresponds the simulation
-        self.our_submenu = savedata[6]
-        self.n1 = savedata[7]
-        self.n2 = savedata[8]
-        self.nsmall = savedata[9]
-        self.wallpos = savedata[10]
-        self.holesize = savedata[11]
-        self.Rbig = savedata[12]
-        self.temp1 = savedata[13]
-        self.temp2 = savedata[14]
-        self.compact = savedata[15]
-        self.si_units = savedata[16]
-        if(len(savedata) > 17):
-            self.demo_info_img = savedata[17] #JV: This variable stores the name (and relative path) to the info image. The simulations created by the user will only have a gray image.
-        else:
-            self.demo_info_img = "icons/gray_demo.png"
+            self.s = savedata[0]
+            self.T = savedata[1]
+            self.dt = savedata[2]
+            self.L = savedata[3]
+            self.previewlist = savedata[4]
+            self.our_menu = savedata[5] #JV: To know in which menu corresponds the simulation
+            self.our_submenu = savedata[6]
+            self.n1 = savedata[7]
+            self.n2 = savedata[8]
+            self.nsmall = savedata[9]
+            self.wallpos = savedata[10]
+            self.holesize = savedata[11]
+            self.Rbig = savedata[12]
+            self.temp1 = savedata[13]
+            self.temp2 = savedata[14]
+            self.compact = savedata[15]
+            self.si_units = savedata[16]
+            if(len(savedata) > 17):
+                self.demo_info_img = savedata[17] #JV: This variable stores the name (and relative path) to the info image. The simulations created by the user will only have a gray image.
+            else:
+                self.demo_info_img = "icons/gray_demo.png"
 
-        self.infolabel.source = self.demo_info_img
+            self.infolabel.source = self.demo_info_img
 
-#        self.timeslider.value = self.T
-        self.n = int(np.sqrt(self.s.particles.size))
-        print("")
-        print("")
-        print('Loaded simulation {} with computation'.format(name))
+            #JV: We change the Entropy box if we are in the Brownian submenu
+            if(self.our_submenu ==  "Brownian"):
+                self.extraplottab.text = "<|x(t)-x(0)|^2>"
+            else:
+                self.extraplottab.text = "Entropy"
 
-        last = len(self.s.U)-1 #JV: This variable stores the index of the last variable in this arrays, so we can access it easier
-        print("Initial energy: ",self.s.K[0]+self.s.U[0],"Final energy: ",self.s.U[last]+self.s.K[last])
-        print("Relative increment of energy: ", (abs((self.s.K[0]+self.s.U[0])-(self.s.U[last]+self.s.K[last]))/(self.s.K[0]+self.s.U[0]))*100,"%")
+    #        self.timeslider.value = self.T
+            self.n = int(np.sqrt(self.s.particles.size))
+            print("")
+            print("")
+            print('Loaded simulation {} with computation'.format(name))
 
-        self.simulation = True #JV: This bool is True if we have a simulation calculated/loaded
-        self.setplotlimits(simulation = self.simulation) #JV: Reset and adapt the matplotlib plots
+            last = len(self.s.U)-1 #JV: This variable stores the index of the last variable in this arrays, so we can access it easier
+            print("Initial energy: ",self.s.K[0]+self.s.U[0],"Final energy: ",self.s.U[last]+self.s.K[last])
+            print("Relative increment of energy: ", (abs((self.s.K[0]+self.s.U[0])-(self.s.U[last]+self.s.K[last]))/(self.s.K[0]+self.s.U[0]))*100,"%")
+
+            self.simulation = True #JV: This bool is True if we have a simulation calculated/loaded
+            self.setplotlimits(simulation = self.simulation) #JV: Reset and adapt the matplotlib plots
 
 
     def loadpopup(self):
@@ -2731,7 +2736,7 @@ class DemoScreen(Screen):
         n_bins = 15 #JV: The number of bins that we will be plotting in the histogram
 
         if(self.si_units):
-            delta = 5*2.19/self.dt
+            delta = 5*2.16/self.dt
         else:
             delta = 5./self.dt
 
@@ -2777,7 +2782,7 @@ class DemoScreen(Screen):
 
             elif(self.plotmenu.current_tab.text == 'Acu'): #Accumulated momentum histogram
                 if(self.si_units):
-                    wait_time = 30. * 2.19 #JV: Go to change_units() to understand the "2.19" factor"
+                    wait_time = 30. * 2.16 #JV: Go to change_units() to understand the "2.16" factor"
                 else:
                     wait_time = 30.
                 if(self.time > wait_time):
@@ -2874,7 +2879,7 @@ class DemoScreen(Screen):
 
             elif(self.plotmenu.current_tab.text == 'Acu'): #Accumulated momentum histogram
                 if(self.si_units):
-                    wait_time = 30. * 2.19 #JV: Go to change_units() to understand the "2.19" factor"
+                    wait_time = 30. * 2.16 #JV: Go to change_units() to understand the "2.16" factor"
                 else:
                     wait_time = 30.
                 if(self.time > wait_time):
@@ -2958,7 +2963,7 @@ class DemoScreen(Screen):
 
             elif(self.plotmenu.current_tab.text == 'Acu'): #Accumulated momentum histogram
                 if(self.si_units):
-                    wait_time = 30. * 2.19 #JV: Go to change_units() to understand the "2.19" factor"
+                    wait_time = 30. * 2.16 #JV: Go to change_units() to understand the "2.16" factor"
                 else:
                     wait_time = 30.
                 if(self.time > wait_time):
@@ -3334,9 +3339,22 @@ class MenuScreen(Screen):
 
     def transition_MD(self):
         """JV: Screen transition: from 'menu' to 'demo' """
-        DemoScreen()
-        self.manager.transition = FadeTransition()
-        self.manager.current = 'demo'
+        self.total_demos = len(os.listdir(os.path.join(os.path.dirname(os.path.abspath(__file__)),"saves")))
+        if(self.total_demos == 0):
+            self.warning_window()
+        else:
+            DemoScreen()
+            self.manager.transition = FadeTransition()
+            self.manager.current = 'demo'
+
+    def warning_window(self):
+        content = warningwindow(cancel = self.dismiss_popup)
+        self._popup = Popup(title="Warning", content =content, size_hint = (0.6,0.5), auto_dismiss=False)
+        self._popup.open()
+
+    def dismiss_popup(self):
+        #JV: Closes the Pop-Up
+        self._popup.dismiss()
 
 """
 JV: This is the app class, when it opens calls the ScreenManager

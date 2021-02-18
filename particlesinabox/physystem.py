@@ -131,7 +131,7 @@ def dwalls(r,param):
 
 @jit(nopython=True)
 def close_particles_list(r2,m,N,L):
-    """JV: This functions returns a list (a matrix) where each rows saves m indexs corresponding to the m
+    """JV: This functions returns a NxM matrix where each row saves m indexs corresponding to the m
     closest particles. We will use the r2 matrix calculated in fv() function (go there for more information),
     that contains the distance between our particles"""
     dist = r2.copy()
@@ -180,42 +180,43 @@ def fv(X,Y,dx,dy,r2,i,append,L,N,U,dt,close_list,Nlist,vel_verlet_on,R,menu,subm
 
     """JV: X is an array that contains each position, mx is an nxn array that each column is the position of one particle (so it's a matrix
     that has n X rows) and mxt is the same but tranposed (so it's a matrix of n X columns)"""
-#    MX, MXT = np.meshgrid(X,X,copy=False)
-#    MY, MYT = np.meshgrid(Y,Y,copy=False)
+
+    """
+    UPDATE: This block of code is commented because now it's done in a loop inside solve_verlet() (due to Numba...).
+    Looks a little bit messy but if Numba allowed me to call the np.meshgrid() function we would do this here. Sorry, but I like to keep the comment to remind me that.
+    """
+    # MX, MXT = np.meshgrid(X,X,copy=False)
+    # MY, MYT = np.meshgrid(Y,Y,copy=False)
 
     #JV: So dx is a nxn simetric array with 0 in the diagonal, and each position is the corresponding distance between the particles,
     # so the position [1,2] is the distance between partcle 1 and 2 (x1-x2), and so on
-#    dx = MXT - MX
-#    dx = dx
-#
-#    dy = MYT - MY
-#    dy = dy
-#
-#    r2 = np.square(dx)+np.square(dy)
+    # dx = MXT - MX
+    # dx = dx
 
-    if(menu == "Free!"):
-    #JV: We do this to get the actual distance in the case of the "Free!" simulation
-        dx_v2 = (np.abs(dx.copy())-1*L)
-        r2_v2 = dx_v2**2+dy**2
-        dx = np.where(r2 > r2_v2,dx_v2*np.sign(dx),dx)
-        r2 = np.where(r2 > r2_v2,r2_v2,r2)
-        dy_v2 = (np.abs(dy.copy())-1*L)
-        r2_v2 = dx**2+dy_v2**2
-        dy = np.where(r2 > r2_v2,dy_v2*np.sign(dy),dy)
-        r2 = np.where(r2 > r2_v2,r2_v2,r2)
-        r2_v2 = dx_v2**2+dy_v2**2
-        dx = np.where(r2 > r2_v2,dx_v2*np.sign(dx),dx)
-        dy = np.where(r2 > r2_v2,dy_v2*np.sign(dy),dy)
-        r2 = np.where(r2 > r2_v2,r2_v2,r2)
+    # dy = MYT - MY
+    # dy = dy
+
+    # r2 = np.square(dx)+np.square(dy)
+
+    # if(menu == "Free!"):
+    # #JV: We do this to get the actual distance in the case of the "Free!" simulation, in which there is no elastic collision between the particles and the boundaries
+    #     dx_v2 = (np.abs(dx.copy())-1*L)
+    #     r2_v2 = dx_v2**2+dy**2
+    #     dx = np.where(r2 > r2_v2,dx_v2*np.sign(dx),dx)
+    #     r2 = np.where(r2 > r2_v2,r2_v2,r2)
+    #     dy_v2 = (np.abs(dy.copy())-1*L)
+    #     r2_v2 = dx**2+dy_v2**2
+    #     dy = np.where(r2 > r2_v2,dy_v2*np.sign(dy),dy)
+    #     r2 = np.where(r2 > r2_v2,r2_v2,r2)
+    #     r2_v2 = dx_v2**2+dy_v2**2
+    #     dx = np.where(r2 > r2_v2,dx_v2*np.sign(dx),dx)
+    #     dy = np.where(r2 > r2_v2,dy_v2*np.sign(dy),dy)
+    #     r2 = np.where(r2 > r2_v2,r2_v2,r2)
 
     dUx = 0.
     dUy = 0.
     utot = np.zeros((N))
     f = np.zeros((N,2))
-
-    #JV: Now we do include this block of code outside of this function, so we don't have problems with numba
-#    if((i*dt)%0.5== 0): #JV: every certain amount of steps we update the list
-#        close_list = close_particles_list(r2,Nlist,N,L) #JV: matrix that contains in every row the indexs of the m closest particles
 
     for j in range(0,N):
         dUx = 0.
@@ -235,11 +236,12 @@ def fv(X,Y,dx,dy,r2,i,append,L,N,U,dt,close_list,Nlist,vel_verlet_on,R,menu,subm
                 if((r2[j,c] < 4*max(R[j],R[c])) and (r2[j,c] > 10**(-2))):
                     dUx = dUx + dLJverlet(dx[j,c],r2[j,c],R[j],R[c])
                     dUy = dUy + dLJverlet(dy[j,c],r2[j,c],R[j],R[c])
+                    # print(dUx,dUy,dx[j,c],r2[j,c],R[j],R[c])
+#JV: COMMENTED PART BECAUSE NUMBA HAS PROBLEMS WITH THIS BLOCK OF CODE THAT DOES THE CALCULATION IN THE VERLET ALGORITHM, NOW IT ONLY WORKS WITH THE VELOCITY VERLET, TO FIX"
 #            else:
 #                if((r2[j,c] < 4*max(R[j],R[c])) and (r2[j,c] > 10**(-2))):
 #                    dUx = dUx + dLJverlet(dx[j,c],r2[j,c],R[j],R[c]) - dwalls([X[j],Y[j]],param)
 #                    dUy = dUy + dLJverlet(dy[j,c],r2[j,c],R[j],R[c]) - dwalls([X[j],Y[j]],param)
-            #JV: COMMENTED PART BECAUSE NUMBA HAS PROBLEMS WITH THE "TRY: " INSIDE DWALLS (UNSUPORTED UNTIL PYTHON 3.7), TO FIX: ERASE THE "TRY:"
 
             #JV: We add the energy in the corresponding array in both cases, remember that the verlet algorithm will include the energy from the walls
             # and that will be visible in fluctuations on the energy
@@ -254,7 +256,7 @@ def fv(X,Y,dx,dy,r2,i,append,L,N,U,dt,close_list,Nlist,vel_verlet_on,R,menu,subm
 #
 #                    if((X[j]**2+Y[j]**2) > (0.8*L)**2):
 #                        u = u + walls([X[j],Y[j]],param)
-                    #JV: COMMENTED FOR NOW, TRYING THINGS WITH NUMBA
+                    #JV: COMMENTED FOR NOW
 
         #JV: If the argument it's True, we will append the energy to our corresponding array
         if(append == True):
@@ -262,23 +264,8 @@ def fv(X,Y,dx,dy,r2,i,append,L,N,U,dt,close_list,Nlist,vel_verlet_on,R,menu,subm
 
         f[j,:] = f[j,:]+np.array([dUx,dUy])
 
-#        #JV: Now we check where this particle is in a RxR grid, that will help us to calcule the entropy.
-#        if(submenu == "Subsystems"):
-#            if(j < n1**2): #JV: n1 stores the number of n1xn1 type 1 particles
-#                grid[int((X[j]+0.495*L) / (L/G)), int((Y[j]+0.495*L) / (L/G)),0] += 1
-#            else:
-#                grid[int((X[j]+0.495*L) / (L/G)), int((Y[j]+0.495*L) / (L/G)),1] += 1
-#        else:
-#            grid[int((X[j]+0.495*L) / (L/G)), int((Y[j]+0.495*L) / (L/G)),0] += 1
-
     if(append == True):
-        U[int(i)] = np.sum(utot)
-#        if(submenu == "Brownian"):
-#            if(wallcount[0] == 0):
-#                X2[int(i)] = (abs(X[N-1]))**2
-#            else:
-#                X2[int(i)] = (L*wallcount[0]+(X[N-1]))**2
-#        entropy[int(i)] = entropy_val
+        U[int(i)] = np.sum(utot) #JV: Finally, we add the total energy so we have the global energy in a step of time
 
     return f
 
@@ -290,10 +277,12 @@ def vel_verlet(t,dt,r0,v0,a0,dx,dy,r2,close_list,m,R,L,N,menu,submenu,wallpos,ho
     elastically collide with the walls and in the "Free!" menu, they will go through the walls and appear
     on the other side."""
 
+    #JV: This performs the basic velocity-Verlet algorithm
     r1 = r0 + v0*dt + 0.5*a0*dt**2 #JV: We calculate x(t+dt)
     a1 = (1/m)*np.transpose(fv(r1[0,:],r1[1,:],dx,dy,r2,t/dt,True,L,N,U,dt,close_list,Nlist,vel_verlet_on,R,menu,submenu,n1,grid,G,wallcount,X2)) #JV: From x(t+dt) we get a(t+dt)
     v1 = v0 + 0.5*(a0+a1)*dt #JV: From the a(t+dt) and a(t) we get v(t+dt)
 
+    #JV: And now, all the boundary conditions from each section
     if(menu == "In a box"):
         #JV: Border conditions, elastic collision. (The "+1" is because 1 is the radius of the ball, in the reduced units that we calculate this part)
         v1[0,:] = np.where((np.abs(r1[0,:])+R/2)**2 > (0.49*L)**2,-v1[0,:],v1[0,:])
@@ -303,16 +292,12 @@ def vel_verlet(t,dt,r0,v0,a0,dx,dy,r2,close_list,m,R,L,N,menu,submenu,wallpos,ho
             #JV: We want to track the position of the brownian ball. If it goes through a wall, we will acknowledge it and save this into a variable that
             # counts the amount of times it has gone through (imagine this as a grid of simulations in which we start at the center one)
             if(r1[0,N-1] > 0.5*L):
-#                    print("passa x")
                 wallcount[0] += 1 #JV: At position 0 in self.wallcount we track the x axis, we sum 1 if it goes through the right wall
             elif(r1[0,N-1] < -0.5*L):
-#                    print("passa -x")
                 wallcount[0] -= 1 #JV: If it goes through the left wall, we subtract 1
             elif(r1[1,N-1] > 0.5*L):
-#                    print("passa y")
                 wallcount[1] += 1 #JV: Now the same for the y axis
             elif(r1[1,N-1] < -0.5*L):
-#                    print("passa -y")
                 wallcount[1] -= 1
         r1[0,:] = np.where(r1[0,:] > 0.5*L,r1[0,:]-1*L,r1[0,:])
         r1[0,:] = np.where(r1[0,:] < -0.5*L,r1[0,:]+1*L,r1[0,:])
@@ -323,10 +308,7 @@ def vel_verlet(t,dt,r0,v0,a0,dx,dy,r2,close_list,m,R,L,N,menu,submenu,wallpos,ho
         #JV: First the limits of the simulation
         bouncing_limits_x = np.where((np.abs(r1[0,:])+R/2)**2 > (0.49*L)**2,True,False)
         bouncing_limits_y = np.where((np.abs(r1[1,:])+R/2)**2 > (0.49*L)**2,True,False)
-        #JV: Now the elastic wall
-#            wallpos = self.param[7]
-#            holesize = self.param[8]
-#            wallwidth = self.param[9]
+        #JV: Now the condtions for the elastic wall
         bounce_left = np.where(np.logical_and(r1[0,:]+R/2 > (wallpos-wallwidth/2),np.abs(r1[1,:])+R/2 > holesize/2),True,False)
         bounce_right = np.where(np.logical_and(r1[0,:]-R/2 < (wallpos+wallwidth/2),np.abs(r1[1,:])+R/2 > holesize/2),True,False)
         is_leftside = np.where(r1[0,:] < wallpos, True, False)
@@ -340,10 +322,8 @@ def vel_verlet(t,dt,r0,v0,a0,dx,dy,r2,close_list,m,R,L,N,menu,submenu,wallpos,ho
             else:
                 if(is_leftside[i] and bounce_left[i] and is_inhole[i] and bouncing[i] == 0):
                     v1[0,i] = -v1[0,i]
-#                    print("bounce_left ",i)
                 elif(not(is_leftside[i]) and bounce_right[i] and is_inhole[i] and bouncing[i] == 0):
                     v1[0,i] = -v1[0,i]
-#                    print("bounce_right ",i)
 
                 #JV: This additional condition is because we want to avoid particles entering in a loop of conditions when bouncing and
                 # making them "get stuck" in the middle of the wall, so now when it bounces it has to wait 2 more time steps to be able to bounce again
@@ -354,12 +334,6 @@ def vel_verlet(t,dt,r0,v0,a0,dx,dy,r2,close_list,m,R,L,N,menu,submenu,wallpos,ho
                 else:
                     if (bouncing[i] != 0):
                         bouncing[i] -= 1
-
-#            print(r1[1,:], holesize/2)
-#            v1[0,:] = np.where(r1[0,:] < wallpos, np.where(np.logical_and(r1[0,:] + 1 > (wallpos-wallwidth/2),abs(r1[1,:]) > holesize/2),-v1[0,:],v1[0,:]),np.where(np.logical_and(r1[0,:] - 1 < (wallpos+wallwidth/2),abs(r1[1,:]) > holesize/2),-v1[0,:],v1[0,:]))
-
-#            v1[0,:] = np.where(np.logical_and(np.logical_and(r1[0,:] + 1 > (wallpos-wallwidth/2),r1[0,:] - 1 < (wallpos+wallwidth/2)),abs(r1[1,:]) > holesize/2),-v1[0,:],v1[0,:])
-#            v1[1,:] = np.where(np.logical_and(abs(r1[1,:]) + 1 > holesize/2,np.logical_and(r1[0,:] + 1 > wallpos+wallwidth/2, r1[0,:] - 1 < wallpos+wallwidth/2)),-v1[1,:],v1[1,:])
 
 
     return r1[0,:],r1[1,:],v1[0,:],v1[1,:],a1
@@ -449,7 +423,7 @@ class PhySystem:
         progress = t/T*100
 
         #JV: Here we define the number of the GxG grid that we will need to calcule the entropy, change in order to change the precision of this grid
-        self.G = 5
+        self.G = 7
 
         #JV: We create a list that will be useful for the walls submenu, that will help us in the border conditions of the wall, see in vel_verlet()
         self.bouncing = np.zeros(self.particles.size)
@@ -472,8 +446,8 @@ class PhySystem:
         self.vel_verlet_on = True #JV: If it's true, it will compute with the velocity verlet algorithm, if it's not, it will compute with normal verlet
 
         self.Nlist = int(1*(self.particles.size)**(1/2)) #JV:This variable defines the number of close particles that will be stored in the list (go to close_particles_list() for more info)
-#        self.Nlist = int(np.arctan(((self.particles.size)**(1/2))/8)*60/np.pi)
-        print(self.Nlist)
+        #print(self.Nlist)
+
         #X,Y,VX,VY has the trajectories of the particles with two indexes that
         #access time and particles, respectively
         self.X = np.vectorize(lambda i: i.r[0])(self.particles)
@@ -495,9 +469,6 @@ class PhySystem:
         r2 = np.square(dx)+np.square(dy)
 
         self.close_list = close_particles_list(r2,self.Nlist,self.particles.size,self.param[2]) #JV: we first calculate the matrix that contains in every row the indexs of the m closest particles
-
-        #JV: DELETE -> close_particles_list CALLED 2 TIMES, ONLY NEEDED 1
-
 
         if(self.vel_verlet_on == True):
             #JV: We define the variables that we will need in the velocity verlet algorithm
@@ -540,21 +511,37 @@ class PhySystem:
 
                 r2 = np.square(dx)+np.square(dy)
 
+                if(self.param[3] == "Free!"):
+                #JV: We do this to get the actual distance in the case of the "Free!" simulation, in which there is no elastic collision between the particles and the boundaries
+                    dx_v2 = (np.abs(dx.copy())-1*L)
+                    r2_v2 = dx_v2**2+dy**2
+                    dx = np.where(r2 > r2_v2,dx_v2*np.sign(dx),dx)
+                    r2 = np.where(r2 > r2_v2,r2_v2,r2)
+                    dy_v2 = (np.abs(dy.copy())-1*L)
+                    r2_v2 = dx**2+dy_v2**2
+                    dy = np.where(r2 > r2_v2,dy_v2*np.sign(dy),dy)
+                    r2 = np.where(r2 > r2_v2,r2_v2,r2)
+                    r2_v2 = dx_v2**2+dy_v2**2
+                    dx = np.where(r2 > r2_v2,dx_v2*np.sign(dx),dx)
+                    dy = np.where(r2 > r2_v2,dy_v2*np.sign(dy),dy)
+                    r2 = np.where(r2 > r2_v2,r2_v2,r2)
+
                 #JV: call velocityverlet to compute the next position
                 if(np.round((t/self.dt*dt)%0.5,1) == 0): #JV: every certain amount of steps we update the list
                     self.close_list = close_particles_list(r2,self.Nlist,self.particles.size,self.param[2]) #JV: matrix that contains in every row the indexs of the m closest particles
 
                 X1,Y1,VX1,VY1,a1 = vel_verlet(t,dt,np.array([X0,Y0]),np.array([VX0,VY0]),a0,dx,dy,r2,self.close_list,self.m,self.R,L,N,self.param[3],self.param[4],self.param[7],self.param[8],self.param[9],self.U,self.Nlist,self.vel_verlet_on,self.param[5],self.grid,self.G,self.wallcount,self.X2,self.bouncing)
 
-                #JV: Now we check where this particle is in a RxR grid, that will help us to calcule the entropy.
-                for h in range(0, N):
-                    if(self.param[4] == "Subsystems"):
-                        if(h < self.param[5]**2): #JV: self.param[5] stores the number of n1xn1 type 1 particles
-                            self.grid[int((X1[h]+0.495*L) / (L/self.G)), int((Y1[h]+0.495*L) / (L/self.G)),0] += 1
+                #JV: Now we check where this particle is in a RxR grid, that will help us to calcule the entropy. We do not do this for the Brownian mode because we don't compute the entropy in that case.
+                if(self.param[4] != "Brownian"):
+                    for h in range(0, N):
+                        if(self.param[4] == "Subsystems"):
+                            if(h < self.param[5]**2): #JV: self.param[5] stores the number of n1xn1 type 1 particles
+                                self.grid[int((X1[h]+0.495*L) / (L/self.G)), int((Y1[h]+0.495*L) / (L/self.G)),0] += 1
+                            else:
+                                self.grid[int((X1[h]+0.495*L) / (L/self.G)), int((Y1[h]+0.495*L) / (L/self.G)),1] += 1
                         else:
-                            self.grid[int((X1[h]+0.495*L) / (L/self.G)), int((Y1[h]+0.495*L) / (L/self.G)),1] += 1
-                    else:
-                        self.grid[int((X1[h]+0.495*L) / (L/self.G)), int((Y1[h]+0.495*L) / (L/self.G))] += 1
+                            self.grid[int((X1[h]+0.495*L) / (L/self.G)), int((Y1[h]+0.495*L) / (L/self.G))] += 1
 
                 if(self.param[4] == "Brownian"):
                     if(self.wallcount[0] == 0):
@@ -576,7 +563,7 @@ class PhySystem:
                 VX0,VY0 = VX1,VY1
 
                 #JV: Every amount of steps of time we calculate the entropy
-                update_entropy = 1
+                update_entropy = 2
                 if(i % update_entropy == 0):
 
                     self.entropy_val = 0
@@ -591,18 +578,12 @@ class PhySystem:
                             for k in range(self.G):
                                 for l in range(2):
                                     if ((self.grid[j,k,0]+self.grid[j,k,1]) != 0):
-                                        pji = float(self.grid[j,k,l])/(update_entropy*(self.grid[j,k,0]+self.grid[j,k,1]))
+                                        # pji = float(self.grid[j,k,l])/(update_entropy*(self.grid[j,k,0]+self.grid[j,k,1]))
+                                        pji = float((self.grid[j,k,l]/(sumagrid_subs[l]/(sumagrid_subs[0]+sumagrid_subs[1])))/(update_entropy*(self.grid[j,k,0]/(sumagrid_subs[0]/(sumagrid_subs[0]+sumagrid_subs[1])))+(self.grid[j,k,1]/(sumagrid_subs[1]/(sumagrid_subs[0]+sumagrid_subs[1])))))
                                     else:
                                         pji = 0
                                     if(pji != 0):
                                         self.entropy_val += -pji*np.log(pji) #JV: We will only calculate the value when pji != 0
-
-#                        pjc = p0/sum(p0)
-#                        pjc = p0
-#
-#                        for j in range(counter):
-#                            if(pjc[j] != 0):
-#                                self.entropy_val += -pjc[j]*np.log(pjc[j])
 
                         self.entropy_val = self.entropy_val /(self.G**2)
 
