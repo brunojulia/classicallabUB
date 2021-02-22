@@ -17,7 +17,7 @@
 			id: QM_image_id
 			source: 'icons/portada.png'
 			allow_stretch: True
-			size_hint_y: 1
+			size_hint_y: 1.5
 
 		BoxLayout:
 		#buttons
@@ -31,7 +31,7 @@
 				background_color: (0, 0, 0, 1)
 				markup: True
 				text: '[color=009fe4]Simulation[/color]'
-				font_size: self.height
+				font_size: self.height/2.5
 				on_press: root.transition_MS()
 				canvas.before:
 					Color:
@@ -40,42 +40,29 @@
 						width: 2
 						rectangle: self.x, self.y, self.width, self.height
 
-			Button:
-				size_hint_y: 1
-				id: m_to_g
-				background_color: (0, 0, 0, 1)
-				markup: True
-				text: '[color=159fe4]Game[/color]'
-				font_size: self.height
-				on_press: root.transition_MG()
-				canvas.before:
-					Color:
-						rgba: .5, .5, .5, 1
-					Line:
-						width: 2
-						rectangle: self.x, self.y, self.width, self.height
+#JV: If you uncomment this block of code, it will apear the Game section, hidden by default
+#			Button:
+#				size_hint_y: 1
+#				id: m_to_g
+#				background_color: (0, 0, 0, 1)
+#				markup: True
+#				text: '[color=159fe4]Game[/color]'
+#				font_size: self.height/2.5
+#				on_press: root.transition_MG()
+#				canvas.before:
+#					Color:
+#						rgba: .5, .5, .5, 1
+#					Line:
+#						width: 2
+#						rectangle: self.x, self.y, self.width, self.height
 
 			Button:
 				id: m_to_d
 				background_color: (0, 0, 0, 1)
 				markup: True
 				text: '[color=159fe4]Demo[/color]'
-				font_size: self.height
+				font_size: self.height/2.5
 				on_press: root.transition_MD()
-				canvas.before:
-					Color:
-						rgba: .5, .5, .5, 1
-					Line:
-						width: 2
-						rectangle: self.x, self.y, self.width, self.height
-
-			Button:
-				id: physics_id
-				background_color: (0, 0, 0, 1)
-				markup: True
-				text: '[color=3b9ff2]...[/color]'
-				font_size: self.height
-				#on_release: Factory.PhysicsPopup().open()
 				canvas.before:
 					Color:
 						rgba: .5, .5, .5, 1
@@ -97,21 +84,15 @@
 
 	pcbutton: pc_button
 
-	massslider: mass_slider
-	rslider: r_slider
 	nrslider: nr_slider
 	n1slider: n1_slider
 	n2slider: n2_slider
-	nbigslider: nbig_slider
 	nsmallslider: nsmall_slider
 
 
-	massslider2: mass_slider2
-	rslider2: r_slider2
 	nrslider2: nr_slider2
 	n1slider2: n1_slider2
 	n2slider2: n2_slider2
-	nbigslider2: nbig_slider2
 	nsmallslider2: nsmall_slider2
 
 	wallslider: wall_slider
@@ -119,7 +100,6 @@
 	nrslider3: nr_slider3
 	n1slider3: n1_slider3
 	n2slider3: n2_slider3
-	nbigslider3: nbig_slider3
 	nsmallslider3: nsmall_slider3
 
 
@@ -345,35 +325,9 @@
 								BoxLayout:
 									orientation: 'horizontal'
 									size_hint: (1, 0.1)
-									Label:
-										text: 'm'
-										markup: True
-										size_hint: (0.2, 1)
-									Label:
-										text: str(round(mass_slider.value,2))
-										size_hint: (0.2, 1)
-									Slider:
-										id: mass_slider
-										size_hint: (1, 1)
-										min: 1
-										max: 1
-										step: 0.5
 								BoxLayout:
 									orientation: 'horizontal'
 									size_hint: (1, 0.1)
-									Label:
-										text: 'R'
-										markup: True
-										size_hint: (0.2, 1)
-									Label:
-										text: str(round(r_slider.value,2))
-										size_hint: (0.2, 1)
-									Slider:
-										id: r_slider
-										size_hint: (1, 1)
-										min: -100
-										max: 100
-										step: 1
 						TabbedPanel:
 							id: inabox_menu
 							size_hint: (1, 1)
@@ -411,7 +365,7 @@
 										Slider:
 											id: nr_slider
 											size_hint: (1, 1)
-											min: 1
+											min: 2
 											max: 20
 											step: 1
 											on_touch_up: root.on_touch_Slider()
@@ -441,8 +395,8 @@
 										Slider:
 											id: n1_slider
 											size_hint: (1, 1)
-											min: 1
-											max: 10
+											min: 2
+											max: 15
 											step: 1
 											on_touch_up: root.on_touch_Slider()
 									BoxLayout:
@@ -457,8 +411,8 @@
 										Slider:
 											id: n2_slider
 											size_hint: (1, 1)
-											min: 1
-											max: 10
+											min: 2
+											max: 15
 											step: 1
 											on_touch_up: root.on_touch_Slider()
 							TabbedPanelItem:
@@ -478,22 +432,6 @@
 									BoxLayout:
 										orientation: 'horizontal'
 										Label:
-											text: 'N[sub]big[/sub]'
-											markup: True
-											size_hint: (0.2, 1)
-										Label:
-											text: str(round(nbig_slider.value,2))
-											size_hint: (0.2, 1)
-										Slider:
-											id: nbig_slider
-											size_hint: (1, 1)
-											min: 1
-											max: 3
-											step: 1
-											on_touch_up: root.on_touch_Slider()
-									BoxLayout:
-										orientation: 'horizontal'
-										Label:
 											text: 'N[sub]small[/sub]'
 											markup: True
 											size_hint: (0.2, 1)
@@ -504,7 +442,7 @@
 											id: nsmall_slider
 											size_hint: (1, 1)
 											min: 2
-											max: 14
+											max: 20
 											step: 2
 											on_touch_up: root.on_touch_Slider()
 				TabbedPanelItem:
@@ -530,35 +468,9 @@
 								BoxLayout:
 									orientation: 'horizontal'
 									size_hint: (1, 0.1)
-									Label:
-										text: 'm'
-										markup: True
-										size_hint: (0.2, 1)
-									Label:
-										text: str(round(mass_slider2.value,2))
-										size_hint: (0.2, 1)
-									Slider:
-										id: mass_slider2
-										size_hint: (1, 1)
-										min: 1
-										max: 1
-										step: 0.5
 								BoxLayout:
 									orientation: 'horizontal'
 									size_hint: (1, 0.1)
-									Label:
-										text: 'R'
-										markup: True
-										size_hint: (0.2, 1)
-									Label:
-										text: str(round(r_slider2.value,2))
-										size_hint: (0.2, 1)
-									Slider:
-										id: r_slider2
-										size_hint: (1, 1)
-										min: -100
-										max: 100
-										step: 1
 						TabbedPanel:
 							id: free_menu
 							size_hint: (1, 1)
@@ -585,7 +497,7 @@
 										Slider:
 											id: nr_slider2
 											size_hint: (1, 1)
-											min: 1
+											min: 2
 											max: 30
 											step: 1
 											on_touch_up: root.on_touch_Slider()
@@ -609,8 +521,8 @@
 										Slider:
 											id: n1_slider2
 											size_hint: (1, 1)
-											min: 1
-											max: 10
+											min: 2
+											max: 15
 											step: 1
 											on_touch_up: root.on_touch_Slider()
 									BoxLayout:
@@ -625,8 +537,8 @@
 										Slider:
 											id: n2_slider2
 											size_hint: (1, 1)
-											min: 1
-											max: 10
+											min: 2
+											max: 15
 											step: 1
 											on_touch_up: root.on_touch_Slider()
 							TabbedPanelItem:
@@ -640,22 +552,6 @@
 									BoxLayout:
 										orientation: 'horizontal'
 										Label:
-											text: 'N[sub]big[/sub]'
-											markup: True
-											size_hint: (0.2, 1)
-										Label:
-											text: str(round(nbig_slider2.value,2))
-											size_hint: (0.2, 1)
-										Slider:
-											id: nbig_slider2
-											size_hint: (1, 1)
-											min: 1
-											max: 3
-											step: 1
-											on_touch_up: root.on_touch_Slider()
-									BoxLayout:
-										orientation: 'horizontal'
-										Label:
 											text: 'N[sub]small[/sub]'
 											markup: True
 											size_hint: (0.2, 1)
@@ -666,7 +562,7 @@
 											id: nsmall_slider2
 											size_hint: (1, 1)
 											min: 2
-											max: 14
+											max: 20
 											step: 2
 											on_touch_up: root.on_touch_Slider()
 				TabbedPanelItem:
@@ -748,7 +644,7 @@
 										Slider:
 											id: nr_slider3
 											size_hint: (1, 1)
-											min: 1
+											min: 2
 											max: 16
 											step: 1
 											on_touch_up: root.on_touch_Slider()
@@ -772,7 +668,7 @@
 										Slider:
 											id: n1_slider3
 											size_hint: (1, 1)
-											min: 1
+											min: 2
 											max: 10
 											step: 1
 											on_touch_up: root.on_touch_Slider()
@@ -788,7 +684,7 @@
 										Slider:
 											id: n2_slider3
 											size_hint: (1, 1)
-											min: 1
+											min: 2
 											max: 10
 											step: 1
 											on_touch_up: root.on_touch_Slider()
@@ -803,22 +699,6 @@
 									BoxLayout:
 										orientation: 'horizontal'
 										Label:
-											text: 'N[sub]big[/sub]'
-											markup: True
-											size_hint: (0.2, 1)
-										Label:
-											text: str(round(nbig_slider3.value,2))
-											size_hint: (0.2, 1)
-										Slider:
-											id: nbig_slider3
-											size_hint: (1, 1)
-											min: 1
-											max: 1
-											step: 1
-											on_touch_up: root.on_touch_Slider()
-									BoxLayout:
-										orientation: 'horizontal'
-										Label:
 											text: 'N[sub]small[/sub]'
 											markup: True
 											size_hint: (0.2, 1)
@@ -829,7 +709,7 @@
 											id: nsmall_slider3
 											size_hint: (1, 1)
 											min: 2
-											max: 10
+											max: 14
 											step: 2
 											on_touch_up: root.on_touch_Slider()
 <DemoScreen>:
@@ -1230,3 +1110,28 @@
 		Button:
 			text: 'Exit'
 			on_press: root.cancel("")
+
+<warningwindow>:
+	BoxLayout:
+		pos_hint: {'right': 0.9, 'top': 1}
+		size_hint: (0.9,0.8)
+		orientation: 'vertical'
+		BoxLayout:
+			orientation: 'horizontal'
+			Label:
+				text: "[b]You don't have any simulations loaded!"
+				markup: True
+				size_hint: (0.4, 0.6)
+		BoxLayout:
+			orientation: 'horizontal'
+			Label:
+				text: 'You need to have at least one simulation loaded to go to this section.'
+				size_hint: (0.1, 0.6)
+	BoxLayout:
+		pos_hint: {'right': 1}
+		orientation: 'horizontal'
+		size_hint: (1, None)
+		height: 60
+		Button:
+			text: 'Exit'
+			on_press: root.cancel()
